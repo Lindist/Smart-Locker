@@ -2,8 +2,21 @@
 
 import React, { useState } from 'react';
 import { User, Parcel, Locker } from '@/lib/types';
-import { QRCodeSVG } from 'qrcode.react';
-import { Package, Unlock, KeyRound, CheckCircle2, AlertCircle, Clock, Copy, Check, MapPin, Inbox } from 'lucide-react';
+import QrScanner from './QrScanner';
+import { 
+  Package, 
+  Unlock, 
+  KeyRound, 
+  CheckCircle2, 
+  AlertCircle, 
+  Clock, 
+  Copy, 
+  Check, 
+  MapPin, 
+  Inbox, 
+  Camera, 
+  Sparkles 
+} from 'lucide-react';
 
 interface RecipientViewProps {
   currentUser: User;
@@ -19,6 +32,9 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
   const [errorMsg, setErrorMsg] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Scanner state
+  const [showScanner, setShowScanner] = useState(false);
+
   // Filter parcels for current recipient
   const myPendingParcels = parcels.filter(
     (p) => p.recipientId === currentUser.id && p.status === 'PENDING'
@@ -33,7 +49,15 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleUnlockWithCode = async (code: string) => {
+  const handleUnlockWithCode = async (rawCode: string) => {
+    let code = rawCode.trim();
+
+    // If QR code scanned is a full URL e.g. http://localhost:3000/pickup/qr_xxx
+    if (code.includes('/pickup/')) {
+      const parts = code.split('/pickup/');
+      code = parts[1] || code;
+    }
+
     if (!code) {
       setErrorMsg('กรุณากรอกรหัส PIN หรือ Token');
       return;
@@ -49,7 +73,7 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'recipient_unlock',
-          code: code.trim(),
+          code,
           recipientId: currentUser.id,
         }),
       });
@@ -58,6 +82,7 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
 
       setSuccessMsg(data.message);
       setManualCode('');
+      setShowScanner(false);
       onRefresh();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'ปลดล็อกไม่สำเร็จ');
@@ -104,14 +129,43 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
         </div>
       )}
 
-      {/* SECTION 1: Manual Unlock Form (ช่องกรอกรหัสสำหรับเปิดตู้) */}
+      {/* SECTION 1: QR CODE SCANNER (CAMERA) */}
+      <div className="space-y-4">
+        {!showScanner ? (
+          <button
+            type="button"
+            onClick={() => setShowScanner(true)}
+            className="w-full p-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 active:scale-98 text-white rounded-2xl shadow-xl shadow-emerald-600/25 transition flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3 text-left">
+              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center font-bold text-xl group-hover:scale-110 transition">
+                <Camera className="w-6 h-6 text-white animate-pulse" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white">📷 เปิดกล้องสแกน QR Code (Scanner)</h3>
+                <p className="text-xs text-emerald-100">ใช้กล้องมือถือส่องสแกน QR Code ที่หน้าตู้ เพื่อสั่งเปิดตู้ทันที</p>
+              </div>
+            </div>
+            <span className="text-xs font-semibold bg-white/20 px-3 py-1.5 rounded-xl text-white">
+              เปิดกล้องสแกน
+            </span>
+          </button>
+        ) : (
+          <QrScanner
+            onScanSuccess={(decodedText) => handleUnlockWithCode(decodedText)}
+            onClose={() => setShowScanner(false)}
+          />
+        )}
+      </div>
+
+      {/* SECTION 2: Manual Unlock Form (ช่องกรอกรหัสสำหรับเปิดตู้) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
         <div className="flex items-center gap-2 text-sm font-bold text-white mb-2">
           <KeyRound className="w-4 h-4 text-blue-400" />
-          <span>กรอกรหัส PIN เพื่อเปิดตู้</span>
+          <span>หรือกรอกรหัส PIN / Token เพื่อเปิดตู้</span>
         </div>
         <p className="text-xs text-slate-400 mb-4">
-          หากท่านอยู่ที่หน้าตู้ สามารถกรอกรหัส PIN 6 หลัก หรือรหัส Token เพื่อสั่งปลดล็อกตู้ได้ทันที
+          หากกล้องใช้งานไม่ได้ สามารถนำรหัส PIN 6 หลักมากรอกที่นี่เพื่อสั่งปลดล็อกตู้ได้เช่นกัน
         </p>
 
         <form
@@ -139,7 +193,7 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
         </form>
       </div>
 
-      {/* SECTION 2: List of Waiting Parcels with QR Code & PIN */}
+      {/* SECTION 3: List of Waiting Parcels (No static QR code, showing PIN & Quick Action) */}
       <div>
         <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
           <Package className="w-5 h-5 text-emerald-400" />
@@ -150,7 +204,7 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-500">
             <Package className="w-12 h-12 mx-auto mb-2 opacity-30" />
             <p className="text-sm font-medium">ขณะนี้ไม่มีพัสดุที่รอรับในตู้</p>
-            <p className="text-xs mt-1">เมื่อมีคนส่งของมา ระบบจะแสดง QR Code และรหัส PIN ที่นี่</p>
+            <p className="text-xs mt-1">เมื่อมีคนส่งของมา ข้อมูลและรหัส PIN จะแสดงที่นี่</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -162,8 +216,8 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
                   key={parcel.id}
                   className="bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col justify-between"
                 >
-                  {/* Top: Locker Badge & Tracking */}
                   <div>
+                    {/* Top: Locker Badge & Tracking */}
                     <div className="flex items-center justify-between mb-3">
                       <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full text-xs font-bold flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-emerald-400" />
@@ -178,56 +232,62 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
 
                     <div className="mb-4">
                       <span className="text-[11px] text-slate-400 block">หมายเลขพัสดุ:</span>
-                      <span className="text-sm font-bold text-white font-mono">{parcel.trackingCode}</span>
+                      <span className="text-base font-bold text-white font-mono">{parcel.trackingCode}</span>
                       {parcel.senderName && (
                         <p className="text-xs text-slate-400 mt-0.5">ผู้ส่ง: {parcel.senderName}</p>
                       )}
                     </div>
 
-                    {/* QR Code & PIN Display */}
-                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-center gap-4 mb-4">
-                      {/* QR Code */}
-                      <div className="p-2 bg-white rounded-xl shadow-md flex-shrink-0">
-                        <QRCodeSVG value={parcel.qrToken} size={110} level="M" />
+                    {/* PIN Code Box (แทนที่ QR Code เดิม) */}
+                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-4 text-center">
+                      <span className="text-xs text-slate-400 block mb-1">รหัส PIN 6 หลัก สำหรับเปิดตู้:</span>
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="font-mono text-3xl font-black text-blue-400 tracking-widest">
+                          {parcel.pickupPin}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(parcel.pickupPin, parcel.id)}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
+                          title="คัดลอกรหัส PIN"
+                        >
+                          {copiedId === parcel.id ? (
+                            <Check className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
                       </div>
-
-                      {/* PIN & Instructions */}
-                      <div className="text-center sm:text-left flex-1">
-                        <span className="text-xs text-slate-400 block mb-1">รหัส PIN สำหรับเปิดตู้:</span>
-                        <div className="flex items-center justify-center sm:justify-start gap-2">
-                          <span className="font-mono text-2xl font-black text-blue-400 tracking-widest">
-                            {parcel.pickupPin}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(parcel.pickupPin, parcel.id)}
-                            className="p-1 text-slate-400 hover:text-white transition"
-                            title="คัดลอกรหัส"
-                          >
-                            {copiedId === parcel.id ? (
-                              <Check className="w-4 h-4 text-emerald-400" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-slate-500 mt-2">
-                          นำ QR Code ไปสแกนที่หน้าตู้ หรือกดปุ่ม &quot;ปลดล็อกตู้ทันที&quot; ด้านล่าง
-                        </p>
-                      </div>
+                      <p className="text-[11px] text-slate-500 mt-2">
+                        นำรหัสนี้ไปกดที่หน้าตู้ หรือใช้ปุ่ม &quot;สแกน QR หน้าตู้&quot; ด้านล่าง
+                      </p>
                     </div>
                   </div>
 
-                  {/* Unlock button */}
-                  <button
-                    type="button"
-                    onClick={() => handleUnlockWithCode(parcel.pickupPin)}
-                    disabled={loading}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 text-sm"
-                  >
-                    <Unlock className="w-4 h-4" />
-                    ปลดล็อก {currentLocker?.name || `ตู้ที่ ${parcel.lockerNumber}`} ทันที
-                  </button>
+                  {/* Actions: Scan QR or Direct Unlock */}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowScanner(true);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                      เปิดกล้องสแกน QR Code ที่หน้าตู้
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleUnlockWithCode(parcel.pickupPin)}
+                      disabled={loading}
+                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 text-sm"
+                    >
+                      <Unlock className="w-4 h-4" />
+                      กดปลดล็อก {currentLocker?.name || `ตู้ที่ ${parcel.lockerNumber}`} ทันที
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -235,7 +295,7 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
         )}
       </div>
 
-      {/* SECTION 3: History */}
+      {/* SECTION 4: History */}
       {myHistoryParcels.length > 0 && (
         <div className="pt-4 border-t border-slate-800">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
