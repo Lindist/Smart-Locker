@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Camera, CameraOff, AlertCircle, Sparkles, X, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Camera, CameraOff, X, CheckCircle2 } from 'lucide-react';
 
 interface QrScannerProps {
   onScanSuccess: (decodedText: string) => void;
@@ -12,48 +12,58 @@ interface QrScannerProps {
 export default function QrScanner({ onScanSuccess, onClose, active = true }: QrScannerProps) {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const scannerRef = useRef<unknown>(null);
-  const elementId = 'reader-container';
+
+  // Keep latest onScanSuccess in a ref so useEffect does NOT re-run on parent re-renders!
+  const onScanSuccessRef = useRef(onScanSuccess);
+  useEffect(() => {
+    onScanSuccessRef.current = onScanSuccess;
+  }, [onScanSuccess]);
+
+  const scannerRef = useRef<any>(null);
+  const containerIdRef = useRef(`qr-reader-${Math.random().toString(36).substring(2, 9)}`);
+  const isStartingRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
+    const elementId = containerIdRef.current;
 
     if (!active) return;
 
-    const startScanner = async () => {
+    const startCamera = async () => {
+      if (isStartingRef.current) return;
+      isStartingRef.current = true;
+
       try {
         const { Html5Qrcode } = await import('html5-qrcode');
 
-        // Check camera permission
-        const devices = await Html5Qrcode.getCameras();
-        if (!devices || devices.length === 0) {
-          if (isMounted) setCameraError('ไม่พบกล้องบนอุปกรณ์นี้');
-          return;
-        }
+        if (!isMounted) return;
+
+        // Check container existence in DOM
+        const container = document.getElementById(elementId);
+        if (!container) return;
 
         const html5QrCode = new Html5Qrcode(elementId);
         scannerRef.current = html5QrCode;
 
-        // Prefer back camera on mobile (facingMode: environment)
         const cameraConfig = { facingMode: 'environment' };
 
         await html5QrCode.start(
           cameraConfig,
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
+            qrbox: { width: 220, height: 220 },
             aspectRatio: 1.0,
           },
           (decodedText) => {
-            // Success callback
             if (isMounted) {
-              onScanSuccess(decodedText);
-              // Stop camera after successful scan
-              html5QrCode.stop().catch(() => {});
+              // Trigger success callback
+              if (onScanSuccessRef.current) {
+                onScanSuccessRef.current(decodedText);
+              }
             }
           },
           () => {
-            // Frame error (ignore scanning frames without QR)
+            // Ignore scan frames without QR
           }
         );
 
@@ -63,41 +73,55 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
         }
       } catch (err: unknown) {
         if (isMounted) {
-          console.warn('Camera start error:', err);
-          setCameraError('ไม่สามารถเข้าถึงกล้องได้ (กรุณาอนุญาตให้เว็บเข้าถึงกล้อง)');
+          console.warn('Camera error:', err);
+          setCameraError('ไม่สามารถเปิดกล้องได้ หรือถูกปฏิเสธสิทธิ์การเข้าถึงกล้อง');
         }
+      } finally {
+        isStartingRef.current = false;
       }
     };
 
-    startScanner();
+    // Small delay to ensure DOM element is ready
+    const timer = setTimeout(startCamera, 150);
 
     return () => {
       isMounted = false;
+      clearTimeout(timer);
       if (scannerRef.current) {
         try {
-          const scanner = scannerRef.current as { isScanning?: boolean; stop: () => Promise<void> };
+          const scanner = scannerRef.current;
           if (scanner.isScanning) {
-            scanner.stop().catch(() => {});
+            scanner
+              .stop()
+              .then(() => {
+                try {
+                  scanner.clear();
+                } catch {}
+              })
+              .catch(() => {});
+          } else {
+            try {
+              scanner.clear();
+            } catch {}
           }
-        } catch {
-          // Ignore
-        }
+        } catch {}
       }
     };
-  }, [active, onScanSuccess]);
+  }, [active]); // Depend strictly on `active` only!
 
-  const handleStop = async () => {
+  const handleStop = useCallback(async () => {
     if (scannerRef.current) {
       try {
-        const scanner = scannerRef.current as { isScanning?: boolean; stop: () => Promise<void> };
-        await scanner.stop();
-      } catch {
-        // Ignore
-      }
+        const scanner = scannerRef.current;
+        if (scanner.isScanning) {
+          await scanner.stop();
+        }
+        scanner.clear();
+      } catch {}
     }
     setIsScanning(false);
     if (onClose) onClose();
-  };
+  }, [onClose]);
 
   return (
     <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-5 shadow-2xl relative overflow-hidden">
@@ -126,8 +150,11 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
 
       {/* Camera Viewport Area */}
       <div className="relative rounded-2xl overflow-hidden bg-black flex flex-col items-center justify-center min-h-[280px]">
-        {/* html5-qrcode element container */}
-        <div id={elementId} className="w-full h-full" />
+        {/* Stable container for html5-qrcode */}
+        <div
+          id={containerIdRef.current}
+          className="w-full h-full max-w-sm mx-auto overflow-hidden rounded-2xl"
+        />
 
         {/* Laser Scanning Animation Overlay */}
         {isScanning && !cameraError && (
@@ -143,7 +170,7 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
               {/* Animated Laser Bar */}
               <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_8px_#34d399] animate-pulse absolute top-1/2 -translate-y-1/2"></div>
             </div>
-            <span className="text-[11px] text-emerald-300 font-medium bg-black/60 px-3 py-1 rounded-full mt-3 backdrop-blur border border-emerald-500/30">
+            <span className="text-[11px] text-emerald-300 font-medium bg-black/70 px-3 py-1 rounded-full mt-3 backdrop-blur border border-emerald-500/30">
               กำลังค้นหา QR Code...
             </span>
           </div>
@@ -155,7 +182,7 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
             <CameraOff className="w-10 h-10 text-rose-400 mb-2" />
             <p className="text-xs text-rose-300 font-semibold mb-1">{cameraError}</p>
             <p className="text-[11px] text-slate-500 max-w-xs mb-4">
-              หากใช้งานบนคอมพิวเตอร์ที่ไม่มีกล้อง หรือยังไม่ได้กดอนุญาตกล้อง คุณสามารถกรอกรหัส PIN หรือกดปุ่มปลดล็อกได้โดยตรง
+              หากใช้งานบนอุปกรณ์ที่ไม่มีกล้อง หรือยังไม่ได้กดอนุญาต คุณสามารถกรอกรหัส PIN หรือกดปุ่มปลดล็อกได้โดยตรง
             </p>
           </div>
         )}

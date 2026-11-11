@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { User, Parcel, Locker } from '@/lib/types';
 import QrScanner from './QrScanner';
 import { 
@@ -49,7 +49,7 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleUnlockWithCode = async (rawCode: string) => {
+  const handleUnlockWithCode = useCallback(async (rawCode: string) => {
     let code = rawCode.trim();
 
     // If QR code scanned is a full URL e.g. http://localhost:3000/pickup/qr_xxx
@@ -89,7 +89,7 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser.id, onRefresh]);
 
   return (
     <div className="space-y-6">
@@ -152,7 +152,7 @@ export default function RecipientView({ currentUser, parcels, lockers, onRefresh
           </button>
         ) : (
           <QrScanner
-            onScanSuccess={(decodedText) => handleUnlockWithCode(decodedText)}
+            onScanSuccess={handleUnlockWithCode}
             onClose={() => setShowScanner(false)}
           />
         )}
