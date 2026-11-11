@@ -4,6 +4,19 @@ import { User, Locker, Parcel, UserRole } from './types';
 import { sendLineFlexNotification } from './line';
 
 // Helper to convert snake_case from DB to camelCase for TypeScript
+function mapUserFromDb(row: Record<string, unknown>): User {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    username: String(row.username),
+    password: row.password ? String(row.password) : undefined,
+    phone: String(row.phone || ''),
+    room: String(row.room || ''),
+    role: row.role as User['role'],
+    lineUserId: (row.line_user_id as string) || (row.lineUserId as string) || undefined,
+  };
+}
+
 function mapLockerFromDb(row: Record<string, unknown>): Locker {
   return {
     id: String(row.id),
@@ -77,7 +90,7 @@ export async function dbLoginUser(username: string, password: string): Promise<U
 export async function dbGetUsers(): Promise<User[]> {
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase.from('users').select('*');
-    if (!error && data) return data as User[];
+    if (!error && data) return data.map(mapUserFromDb);
   }
   return systemStore.getUsers();
 }
@@ -85,17 +98,31 @@ export async function dbGetUsers(): Promise<User[]> {
 export async function dbCreateUser(data: Omit<User, 'id'>): Promise<User> {
   if (isSupabaseConfigured() && supabase) {
     const id = 'usr-' + Date.now();
-    const newUser = { id, ...data };
-    const { data: inserted, error } = await supabase.from('users').insert([newUser]).select().single();
-    if (!error && inserted) return inserted as User;
+    const userRow: Record<string, unknown> = {
+      id,
+      name: data.name,
+      username: data.username,
+      password: data.password || '1234',
+      phone: data.phone || '',
+      room: data.room || '',
+      role: data.role,
+      line_user_id: data.lineUserId || null,
+    };
+    const { data: inserted, error } = await supabase.from('users').insert([userRow]).select().single();
+    if (!error && inserted) return mapUserFromDb(inserted);
   }
   return systemStore.createUser(data);
 }
 
 export async function dbUpdateUser(id: string, data: Partial<User>): Promise<User | null> {
   if (isSupabaseConfigured() && supabase) {
-    const { data: updated, error } = await supabase.from('users').update(data).eq('id', id).select().single();
-    if (!error && updated) return updated as User;
+    const updatePayload: Record<string, unknown> = { ...data };
+    if (data.lineUserId !== undefined) {
+      updatePayload.line_user_id = data.lineUserId || null;
+      delete updatePayload.lineUserId;
+    }
+    const { data: updated, error } = await supabase.from('users').update(updatePayload).eq('id', id).select().single();
+    if (!error && updated) return mapUserFromDb(updated);
   }
   return systemStore.updateUser(id, data);
 }
