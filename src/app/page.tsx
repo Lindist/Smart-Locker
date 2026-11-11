@@ -20,7 +20,6 @@ export default function HomePage() {
   const [lockers, setLockers] = useState<Locker[]>([]);
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isSupabase, setIsSupabase] = useState(false);
 
   // Check saved session on mount
@@ -75,23 +74,6 @@ export default function HomePage() {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  // Switch active user session directly from dropdown (quick switch)
-  const handleSwitchUser = async (user: User) => {
-    try {
-      await fetch('/api/auth/current', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
-      setCurrentUser(user);
-      localStorage.setItem('locker_auth_user', JSON.stringify(user));
-      setUserDropdownOpen(false);
-      fetchAllData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -100,7 +82,6 @@ export default function HomePage() {
     } finally {
       localStorage.removeItem('locker_auth_user');
       setCurrentUser(null);
-      setUserDropdownOpen(false);
     }
   };
 
@@ -154,72 +135,26 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* User Badge, Switcher & Logout */}
+        {/* User Badge & Logout */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* User Menu Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="flex items-center gap-2.5 bg-slate-950 border border-slate-700 hover:border-slate-500 px-3.5 py-1.5 rounded-xl text-xs transition shadow-sm"
+          {/* User Info Display */}
+          <div className="flex items-center gap-2 bg-slate-950 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs shadow-sm">
+            <span className="font-bold text-white">{currentUser.name}</span>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                currentUser.role === 'ADMIN'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  : currentUser.role === 'SENDER'
+                  ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+              }`}
             >
-              <div className="text-left">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-white">{currentUser.name}</span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      currentUser.role === 'ADMIN'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                        : currentUser.role === 'SENDER'
-                        ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
-                        : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                    }`}
-                  >
-                    {currentUser.role === 'ADMIN'
-                      ? '🛡️ Admin'
-                      : currentUser.role === 'SENDER'
-                      ? '🚚 ผู้ส่ง'
-                      : '👤 ผู้รับ'}
-                  </span>
-                </div>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-
-            {/* Dropdown Menu */}
-            {userDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95">
-                <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 border-b border-slate-800">
-                  สลับผู้ใช้งานด่วน
-                </div>
-                <div className="max-h-60 overflow-y-auto divide-y divide-slate-800/60">
-                  {allUsers.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => handleSwitchUser(u)}
-                      className={`w-full px-3.5 py-2.5 text-left text-xs transition flex items-center justify-between hover:bg-slate-800 ${
-                        currentUser.id === u.id ? 'bg-blue-600/20 text-blue-300' : 'text-slate-300'
-                      }`}
-                    >
-                      <div>
-                        <div className="font-semibold">{u.name}</div>
-                        <div className="text-[10px] text-slate-500">{u.room ? `ห้อง ${u.room}` : u.username}</div>
-                      </div>
-                      <span
-                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                          u.role === 'ADMIN'
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : u.role === 'SENDER'
-                            ? 'bg-teal-500/20 text-teal-300'
-                            : 'bg-blue-500/20 text-blue-300'
-                        }`}
-                      >
-                        {u.role}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+              {currentUser.role === 'ADMIN'
+                ? '🛡️ Admin'
+                : currentUser.role === 'SENDER'
+                ? '🚚 ผู้ส่ง'
+                : '👤 ผู้รับ'}
+            </span>
           </div>
 
           {/* Refresh Button */}

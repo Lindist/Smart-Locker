@@ -10,7 +10,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, username, phone, room, role } = body;
+    const { name, username, phone, room, role, password } = body;
     if (!name || !username) {
       return NextResponse.json({ success: false, message: 'กรุณากรอกชื่อและ Username' }, { status: 400 });
     }
@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     const newUser = await dbCreateUser({
       name,
       username,
+      password: password || '1234',
       phone: phone || '',
       room: room || '',
       role: (role as UserRole) || 'RECIPIENT',

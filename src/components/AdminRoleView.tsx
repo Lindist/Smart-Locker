@@ -37,6 +37,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
   const [userForm, setUserForm] = useState({
     name: '',
     username: '',
+    password: '',
     phone: '',
     room: '',
     role: 'RECIPIENT' as UserRole,
@@ -413,7 +414,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
             <button
               onClick={() => {
                 setEditingUser(null);
-                setUserForm({ name: '', username: '', phone: '', room: '', role: 'RECIPIENT' });
+                setUserForm({ name: '', username: '', password: '1234', phone: '', room: '', role: 'RECIPIENT' });
                 setUserModalOpen(true);
               }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow"
@@ -468,6 +469,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                             setUserForm({
                               name: u.name,
                               username: u.username,
+                              password: u.password || (u.username === 'admin' ? 'admin' : '1234'),
                               phone: u.phone,
                               room: u.room,
                               role: u.role,
@@ -615,15 +617,29 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Username</label>
-                <input
-                  type="text"
-                  required
-                  value={userForm.username}
-                  onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Username</label>
+                  <input
+                    type="text"
+                    required
+                    value={userForm.username}
+                    onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+                  <input
+                    type="text"
+                    required
+                    value={userForm.password}
+                    onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                    placeholder="เช่น 1234"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
