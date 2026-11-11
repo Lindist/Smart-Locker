@@ -87,6 +87,68 @@ export async function dbLoginUser(username: string, password: string): Promise<U
   return null;
 }
 
+export async function dbFindOrCreateLineUser(params: {
+  lineUserId: string;
+  displayName: string;
+  room?: string;
+  phone?: string;
+}): Promise<User> {
+  const { lineUserId, displayName, room, phone } = params;
+
+  if (isSupabaseConfigured() && supabase) {
+    // 1. Check if user with this line_user_id already exists in Supabase
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('line_user_id', lineUserId)
+      .single();
+
+    if (existingUser) {
+      systemStore.setActiveUserId(existingUser.id);
+      return mapUserFromDb(existingUser);
+    }
+
+    // 2. Not found -> Create new user in Supabase
+    const id = 'usr-line-' + Date.now();
+    const newUserRow = {
+      id,
+      name: displayName || 'ผู้ใช้ LINE',
+      username: 'line_' + lineUserId.substring(1, 8).toLowerCase(),
+      password: '1234',
+      phone: phone || '',
+      room: room || '101',
+      role: 'RECIPIENT',
+      line_user_id: lineUserId,
+    };
+
+    const { data: inserted, error } = await supabase.from('users').insert([newUserRow]).select().single();
+    if (!error && inserted) {
+      systemStore.setActiveUserId(inserted.id);
+      return mapUserFromDb(inserted);
+    }
+  }
+
+  // Fallback to in-memory store
+  const users = systemStore.getUsers();
+  const existing = users.find((u) => u.lineUserId === lineUserId);
+  if (existing) {
+    systemStore.setActiveUserId(existing.id);
+    return existing;
+  }
+
+  const newUser = systemStore.createUser({
+    name: displayName || 'ผู้ใช้ LINE',
+    username: 'line_' + lineUserId.substring(1, 8).toLowerCase(),
+    password: '1234',
+    phone: phone || '',
+    room: room || '101',
+    role: 'RECIPIENT',
+    lineUserId,
+  });
+  systemStore.setActiveUserId(newUser.id);
+  return newUser;
+}
+
 export async function dbGetUsers(): Promise<User[]> {
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase.from('users').select('*');

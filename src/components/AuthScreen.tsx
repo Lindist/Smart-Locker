@@ -3,17 +3,19 @@
 import React, { useState } from 'react';
 import { User } from '@/lib/types';
 import { 
-  Package, 
   Lock, 
   User as UserIcon, 
   Shield, 
   Truck, 
-  KeyRound, 
+  Package, 
   Eye, 
   EyeOff, 
   ArrowRight, 
   AlertCircle,
-  Sparkles
+  Sparkles,
+  X,
+  CheckCircle2,
+  Home
 } from 'lucide-react';
 
 interface AuthScreenProps {
@@ -28,7 +30,13 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleLogin = async (e: React.FormEvent, customUser?: string, customPass?: string) => {
+  // LINE Modal state for manual LINE ID connect when LIFF ID is not yet in .env
+  const [lineModalOpen, setLineModalOpen] = useState(false);
+  const [lineName, setLineName] = useState('');
+  const [lineUserId, setLineUserId] = useState('');
+  const [lineRoom, setLineRoom] = useState('101');
+
+  const handleLogin = async (e: React.FormEvent | null, customUser?: string, customPass?: string) => {
     if (e) e.preventDefault();
     const u = customUser || username;
     const p = customPass || password;
@@ -66,7 +74,85 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
   const handleQuickLogin = (u: string, p: string) => {
     setUsername(u);
     setPassword(p);
-    handleLogin(null as unknown as React.FormEvent, u, p);
+    handleLogin(null, u, p);
+  };
+
+  // LINE Login / LIFF Trigger
+  const handleLineLogin = async () => {
+    setLoading(true);
+    setErrorMsg('');
+
+    const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
+    if (liffId && !liffId.includes('your-liff-id')) {
+      try {
+        const liff = (await import('@line/liff')).default;
+        await liff.init({ liffId });
+
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        // Send to /api/auth/line to find or create in Supabase
+        const res = await fetch('/api/auth/line', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lineUserId: profile.userId,
+            displayName: profile.displayName,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+
+        localStorage.setItem('locker_auth_user', JSON.stringify(data.data));
+        onLoginSuccess(data.data);
+        return;
+      } catch (err: unknown) {
+        console.warn('LIFF init warning:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // If LIFF ID is not set yet in .env, open the LINE Connect dialog
+    setLoading(false);
+    setLineModalOpen(true);
+  };
+
+  // Submit manual LINE Connect Modal
+  const handleConfirmLineConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lineUserId) {
+      setErrorMsg('กรุณากรอก LINE User ID (ตัว U...)');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      const res = await fetch('/api/auth/line', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineUserId: lineUserId.trim(),
+          displayName: lineName.trim() || 'ผู้ใช้ LINE',
+          room: lineRoom.trim() || '101',
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+
+      localStorage.setItem('locker_auth_user', JSON.stringify(data.data));
+      setLineModalOpen(false);
+      onLoginSuccess(data.data);
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'เชื่อมต่อ LINE ไม่สำเร็จ');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -159,6 +245,28 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
             </div>
           </form>
 
+          {/* OR LINE LOGIN DIVIDER */}
+          <div className="relative my-6 flex items-center justify-center">
+            <div className="border-t border-slate-800 w-full"></div>
+            <span className="bg-slate-900 px-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold">
+              หรือเข้าใช้งานด้วย
+            </span>
+          </div>
+
+          {/* LINE Login / LINE LIFF Button */}
+          <button
+            type="button"
+            onClick={handleLineLogin}
+            disabled={loading}
+            className="w-full py-3.5 bg-[#06C755] hover:bg-[#05b34c] active:scale-95 text-white font-bold text-sm rounded-xl shadow-xl shadow-[#06C755]/20 transition flex items-center justify-center gap-2.5"
+          >
+            {/* LINE Official Speech Bubble Icon */}
+            <svg className="w-5 h-5 fill-current flex-shrink-0" viewBox="0 0 24 24">
+              <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.121.303.079.778.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.54 6.911-4.069 9.428-6.967 1.739-1.907 2.572-3.843 2.572-5.992z"/>
+            </svg>
+            <span>เข้าสู่ระบบด้วย LINE (LINE Login / LIFF)</span>
+          </button>
+
           {/* Quick Demo Login Section */}
           <div className="mt-8 pt-6 border-t border-slate-800">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-3 flex items-center gap-1.5">
@@ -217,9 +325,92 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
 
         {/* Footer info */}
         <p className="text-center text-xs text-slate-500 mt-6">
-          Intelligent Parcel Locker System • Authentication Gateway
+          Intelligent Parcel Locker System • Authentication & LINE Gateway
         </p>
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL: LINE CONNECT / LIFF AUTO-SIGN IN                                  */}
+      {/* ========================================================================= */}
+      {lineModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+              <div className="flex items-center gap-2 text-[#06C755] font-bold text-base">
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.121.303.079.778.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.54 6.911-4.069 9.428-6.967 1.739-1.907 2.572-3.843 2.572-5.992z"/>
+                </svg>
+                <span>เข้าใช้งานด้วยบัญชี LINE</span>
+              </div>
+              <button onClick={() => setLineModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 mb-4">
+              กรอกข้อมูลเพื่อเชื่อมต่อบัญชี LINE ของคุณ ระบบจะค้นหาหรือ<strong>สร้าง User ใหม่ใน Supabase</strong> ให้โดยอัตโนมัติ
+            </p>
+
+            <form onSubmit={handleConfirmLineConnect} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                  <UserIcon className="w-3.5 h-3.5 text-[#06C755]" /> ชื่อโปรไฟล์ LINE (Display Name)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={lineName}
+                  onChange={(e) => setLineName(e.target.value)}
+                  placeholder="เช่น สมศักดิ์ หรือชื่อ LINE ของคุณ"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#06C755]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#06C755] text-white flex items-center justify-center text-[9px] font-bold">U</span>
+                  LINE User ID (ขึ้นต้นด้วย U...)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={lineUserId}
+                  onChange={(e) => setLineUserId(e.target.value)}
+                  placeholder="เช่น Ua1b2c3d4e5f67890..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-[#06C755]"
+                />
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  (ดูได้จากหน้า Your user ID ใน LINE Developers Console)
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Home className="w-3.5 h-3.5 text-blue-400" /> เลขห้องพัก / บ้านเลขที่
+                </label>
+                <input
+                  type="text"
+                  value={lineRoom}
+                  onChange={(e) => setLineRoom(e.target.value)}
+                  placeholder="เช่น 101, 205"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading || !lineUserId}
+                  className="w-full py-3.5 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {loading ? 'กำลังเชื่อมต่อ...' : 'เข้าสู่ระบบและสร้าง User ใน Supabase'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
