@@ -22,15 +22,33 @@ export default function HomePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSupabase, setIsSupabase] = useState(false);
 
-  // Check saved session on mount
+  // Check saved session on mount or handle LINE OAuth redirect callback
   useEffect(() => {
     try {
+      // 1. Check if returning from LINE OAuth 2.1
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const lineAuthParam = params.get('line_auth');
+        if (lineAuthParam) {
+          const decodedJson = atob(lineAuthParam);
+          const userObj = JSON.parse(decodedJson);
+          localStorage.setItem('locker_auth_user', JSON.stringify(userObj));
+          setCurrentUser(userObj);
+          // Clean search params from URL
+          window.history.replaceState({}, '', window.location.pathname);
+          setIsAuthChecking(false);
+          return;
+        }
+      }
+
+      // 2. Normal localStorage session
       const saved = localStorage.getItem('locker_auth_user');
       if (saved) {
         const parsed = JSON.parse(saved);
         setCurrentUser(parsed);
       }
-    } catch {
+    } catch (err) {
+      console.warn('Session check warning:', err);
       localStorage.removeItem('locker_auth_user');
     } finally {
       setIsAuthChecking(false);

@@ -77,48 +77,26 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
     handleLogin(null, u, p);
   };
 
-  // LINE Login / LIFF Trigger
+  // LINE Login OAuth 2.1 Trigger
   const handleLineLogin = async () => {
     setLoading(true);
     setErrorMsg('');
 
-    const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
-    if (liffId && !liffId.includes('your-liff-id')) {
-      try {
-        const liff = (await import('@line/liff')).default;
-        await liff.init({ liffId });
-
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-
-        const profile = await liff.getProfile();
-        // Send to /api/auth/line to find or create in Supabase
-        const res = await fetch('/api/auth/line', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            lineUserId: profile.userId,
-            displayName: profile.displayName,
-          }),
-        });
-        const data = await res.json();
-        if (!data.success) throw new Error(data.message);
-
-        localStorage.setItem('locker_auth_user', JSON.stringify(data.data));
-        onLoginSuccess(data.data);
-        return;
-      } catch (err: unknown) {
-        console.warn('LIFF init warning:', err);
-      } finally {
+    try {
+      // Check if LINE_LOGIN_CHANNEL_ID is configured on server
+      const check = await fetch('/api/auth/line/login', { method: 'GET' });
+      if (check.status === 400) {
+        // Not configured in .env.local yet -> open test connect modal
         setLoading(false);
+        setLineModalOpen(true);
+        return;
       }
+    } catch {
+      // Fallback
     }
 
-    // If LIFF ID is not set yet in .env, open the LINE Connect dialog
-    setLoading(false);
-    setLineModalOpen(true);
+    // Redirect to official LINE Login (access.line.me)
+    window.location.href = '/api/auth/line/login';
   };
 
   // Submit manual LINE Connect Modal
