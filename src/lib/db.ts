@@ -38,6 +38,41 @@ function mapParcelFromDb(row: Record<string, unknown>): Parcel {
 // ----------------------------------------------------
 // USERS SERVICE
 // ----------------------------------------------------
+export async function dbLoginUser(username: string, password: string): Promise<User | null> {
+  const cleanUser = username.trim();
+  const cleanPass = password.trim();
+
+  // 1. If Supabase is connected
+  if (isSupabaseConfigured() && supabase) {
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .ilike('username', cleanUser)
+      .single();
+
+    if (!error && user) {
+      const validPass = user.password || (user.username === 'admin' ? 'admin' : '1234');
+      if (cleanPass === validPass) {
+        systemStore.setActiveUserId(user.id);
+        return user as User;
+      }
+    }
+  }
+
+  // 2. In-memory fallback
+  const users = systemStore.getUsers();
+  const user = users.find((u) => u.username.toLowerCase() === cleanUser.toLowerCase());
+  if (user) {
+    const expectedPass = user.password || (user.username === 'admin' ? 'admin' : '1234');
+    if (cleanPass === expectedPass) {
+      systemStore.setActiveUserId(user.id);
+      return user;
+    }
+  }
+
+  return null;
+}
+
 export async function dbGetUsers(): Promise<User[]> {
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase.from('users').select('*');

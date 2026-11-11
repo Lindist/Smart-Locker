@@ -1,11 +1,11 @@
 import { User, Locker, Parcel, ActivityLog, UserRole, LockerStatus } from './types';
 
 export const INITIAL_USERS: User[] = [
-  { id: 'usr-admin', name: 'สมศักดิ์ ดูแลระบบ', username: 'admin', phone: '0890000000', room: 'Office', role: 'ADMIN' },
-  { id: 'usr-sender', name: 'วิชัย ขนส่งด่วน (Courier)', username: 'sender1', phone: '0819998888', room: 'Delivery', role: 'SENDER' },
-  { id: 'usr-rec1', name: 'สมชาย สายเปย์', username: 'somchai', phone: '0812345678', room: '101', role: 'RECIPIENT' },
-  { id: 'usr-rec2', name: 'สมศรี มณีวรรณ', username: 'somsri', phone: '0898765432', room: '205', role: 'RECIPIENT' },
-  { id: 'usr-rec3', name: 'ธนากร สุขสันต์', username: 'thanakorn', phone: '0865554321', room: '312', role: 'RECIPIENT' },
+  { id: 'usr-admin', name: 'สมศักดิ์ ดูแลระบบ', username: 'admin', password: 'admin', phone: '0890000000', room: 'Office', role: 'ADMIN' },
+  { id: 'usr-sender', name: 'วิชัย ขนส่งด่วน (Courier)', username: 'sender1', password: '1234', phone: '0819998888', room: 'Delivery', role: 'SENDER' },
+  { id: 'usr-rec1', name: 'สมชาย สายเปย์', username: 'somchai', password: '1234', phone: '0812345678', room: '101', role: 'RECIPIENT' },
+  { id: 'usr-rec2', name: 'สมศรี มณีวรรณ', username: 'somsri', password: '1234', phone: '0898765432', room: '205', role: 'RECIPIENT' },
+  { id: 'usr-rec3', name: 'ธนากร สุขสันต์', username: 'thanakorn', password: '1234', phone: '0865554321', room: '312', role: 'RECIPIENT' },
 ];
 
 export const INITIAL_LOCKERS: Locker[] = [

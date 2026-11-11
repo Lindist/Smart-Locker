@@ -4,24 +4,39 @@ import React, { useState, useEffect, useCallback } from 'react';
 import RecipientView from '@/components/RecipientView';
 import SenderView from '@/components/SenderView';
 import AdminRoleView from '@/components/AdminRoleView';
+import AuthScreen from '@/components/AuthScreen';
 import { User, Locker, Parcel } from '@/lib/types';
 import { 
   Package, 
-  Users, 
-  Truck, 
-  Shield, 
   RefreshCw, 
+  LogOut,
   ChevronDown
 } from 'lucide-react';
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [lockers, setLockers] = useState<Locker[]>([]);
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isSupabase, setIsSupabase] = useState(false);
+
+  // Check saved session on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('locker_auth_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setCurrentUser(parsed);
+      }
+    } catch {
+      localStorage.removeItem('locker_auth_user');
+    } finally {
+      setIsAuthChecking(false);
+    }
+  }, []);
 
   // Fetch live state from backend
   const fetchAllData = useCallback(async () => {
@@ -30,7 +45,6 @@ export default function HomePage() {
       const userRes = await fetch('/api/auth/current');
       const userData = await userRes.json();
       if (userData.success) {
-        setCurrentUser(userData.data.currentUser);
         setAllUsers(userData.data.users);
         setIsSupabase(Boolean(userData.data.isSupabase));
       }
@@ -47,12 +61,13 @@ export default function HomePage() {
     }
   }, []);
 
-  // Poll state every 2 seconds for real-time updates
+  // Poll state every 2.5 seconds for real-time updates when logged in
   useEffect(() => {
     fetchAllData();
-    const interval = setInterval(fetchAllData, 2000);
+    if (!currentUser) return;
+    const interval = setInterval(fetchAllData, 2500);
     return () => clearInterval(interval);
-  }, [fetchAllData]);
+  }, [fetchAllData, currentUser]);
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
@@ -60,7 +75,7 @@ export default function HomePage() {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  // Switch active user session
+  // Switch active user session directly from dropdown (quick switch)
   const handleSwitchUser = async (user: User) => {
     try {
       await fetch('/api/auth/current', {
@@ -69,12 +84,47 @@ export default function HomePage() {
         body: JSON.stringify({ userId: user.id }),
       });
       setCurrentUser(user);
+      localStorage.setItem('locker_auth_user', JSON.stringify(user));
       setUserDropdownOpen(false);
       fetchAllData();
     } catch (err) {
       console.error(err);
     }
   };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore
+    } finally {
+      localStorage.removeItem('locker_auth_user');
+      setCurrentUser(null);
+      setUserDropdownOpen(false);
+    }
+  };
+
+  // If still checking initial localStorage session
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500 text-sm">
+        กำลังตรวจสอบการเข้าสู่ระบบ...
+      </div>
+    );
+  }
+
+  // If NOT logged in, show AuthScreen (Login window)
+  if (!currentUser) {
+    return (
+      <AuthScreen
+        isSupabase={isSupabase}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          fetchAllData();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
@@ -104,8 +154,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* User & Role Switcher */}
-        <div className="flex items-center gap-3">
+        {/* User Badge, Switcher & Logout */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* User Menu Dropdown */}
           <div className="relative">
             <button
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -113,19 +164,19 @@ export default function HomePage() {
             >
               <div className="text-left">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-white">{currentUser?.name || 'กำลังโหลด...'}</span>
+                  <span className="font-bold text-white">{currentUser.name}</span>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      currentUser?.role === 'ADMIN'
+                      currentUser.role === 'ADMIN'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                        : currentUser?.role === 'SENDER'
+                        : currentUser.role === 'SENDER'
                         ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
                         : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                     }`}
                   >
-                    {currentUser?.role === 'ADMIN'
+                    {currentUser.role === 'ADMIN'
                       ? '🛡️ Admin'
-                      : currentUser?.role === 'SENDER'
+                      : currentUser.role === 'SENDER'
                       ? '🚚 ผู้ส่ง'
                       : '👤 ผู้รับ'}
                   </span>
@@ -138,7 +189,7 @@ export default function HomePage() {
             {userDropdownOpen && (
               <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 border-b border-slate-800">
-                  สลับผู้ใช้งาน / สิทธิ์เพื่อทดสอบ
+                  สลับผู้ใช้งานด่วน
                 </div>
                 <div className="max-h-60 overflow-y-auto divide-y divide-slate-800/60">
                   {allUsers.map((u) => (
@@ -146,7 +197,7 @@ export default function HomePage() {
                       key={u.id}
                       onClick={() => handleSwitchUser(u)}
                       className={`w-full px-3.5 py-2.5 text-left text-xs transition flex items-center justify-between hover:bg-slate-800 ${
-                        currentUser?.id === u.id ? 'bg-blue-600/20 text-blue-300' : 'text-slate-300'
+                        currentUser.id === u.id ? 'bg-blue-600/20 text-blue-300' : 'text-slate-300'
                       }`}
                     >
                       <div>
@@ -179,17 +230,23 @@ export default function HomePage() {
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
+
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 hover:text-white transition flex items-center gap-1.5 text-xs font-semibold"
+            title="ออกจากระบบ"
+          >
+            <LogOut className="w-4 h-4 text-rose-400" />
+            <span className="hidden sm:inline">ออกจากระบบ</span>
+          </button>
         </div>
       </header>
 
       {/* Main Role Content View */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        {!currentUser ? (
-          <div className="text-center py-20 text-slate-500">กำลังโหลดข้อมูลระบบ...</div>
-        ) : currentUser.role === 'RECIPIENT' ? (
-          /* ========================================================================= */
-          /* 1. สิทธิ์: ผู้รับ (Recipient)                                             */
-          /* ========================================================================= */
+        {currentUser.role === 'RECIPIENT' ? (
+          /* 1. สิทธิ์: ผู้รับ (Recipient) */
           <RecipientView
             currentUser={currentUser}
             parcels={parcels}
@@ -197,9 +254,7 @@ export default function HomePage() {
             onRefresh={fetchAllData}
           />
         ) : currentUser.role === 'SENDER' ? (
-          /* ========================================================================= */
-          /* 2. สิทธิ์: ผู้ส่ง (Sender)                                                */
-          /* ========================================================================= */
+          /* 2. สิทธิ์: ผู้ส่ง (Sender) */
           <SenderView
             currentUser={currentUser}
             lockers={lockers}
@@ -207,9 +262,7 @@ export default function HomePage() {
             onRefresh={fetchAllData}
           />
         ) : (
-          /* ========================================================================= */
-          /* 3. สิทธิ์: Admin (ผู้ดูแลระบบ)                                           */
-          /* ========================================================================= */
+          /* 3. สิทธิ์: Admin (ผู้ดูแลระบบ) */
           <AdminRoleView
             currentUser={currentUser}
             lockers={lockers}
