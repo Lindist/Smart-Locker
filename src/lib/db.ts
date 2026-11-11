@@ -52,27 +52,52 @@ function mapParcelFromDb(row: Record<string, unknown>): Parcel {
 // ----------------------------------------------------
 // USERS SERVICE
 // ----------------------------------------------------
-export async function dbLoginUser(username: string, password: string): Promise<User | null> {
-  const cleanUser = username.trim();
+export async function dbLoginUser(identifier: string, password: string): Promise<User | null> {
+  const cleanInput = identifier.trim();
+  const cleanPhone = cleanInput.replace(/[\s-]/g, '');
   const cleanPass = password.trim();
 
   // 1. If Supabase is connected
   if (isSupabaseConfigured() && supabase) {
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .ilike('username', cleanUser)
-      .single();
+    // Primary lookup: Phone number
+    let userRow: Record<string, unknown> | null = null;
+    if (cleanPhone) {
+      const { data: phoneUsers, error: phoneErr } = await supabase
+        .from('users')
+        .select('*')
+        .eq('phone', cleanPhone)
+        .limit(1);
 
-    if (error && error.code !== 'PGRST116') {
-      throw new Error(`เชื่อมต่อฐานข้อมูล Supabase ไม่สำเร็จ: ${error.message}`);
+      if (phoneErr) {
+        throw new Error(`เชื่อมต่อฐานข้อมูล Supabase ไม่สำเร็จ: ${phoneErr.message}`);
+      }
+      if (phoneUsers && phoneUsers.length > 0) {
+        userRow = phoneUsers[0];
+      }
     }
 
-    if (user) {
-      const validPass = user.password || (user.username === 'admin' ? 'admin' : '1234');
+    // Fallback lookup: legacy username (e.g. 'admin' or LINE login users without phone yet)
+    if (!userRow && cleanInput) {
+      const { data: legacyUsers, error: userErr } = await supabase
+        .from('users')
+        .select('*')
+        .ilike('username', cleanInput)
+        .limit(1);
+
+      if (userErr) {
+        throw new Error(`เชื่อมต่อฐานข้อมูล Supabase ไม่สำเร็จ: ${userErr.message}`);
+      }
+      if (legacyUsers && legacyUsers.length > 0) {
+        userRow = legacyUsers[0];
+      }
+    }
+
+    if (userRow) {
+      const validPass =
+        (userRow.password as string) || (userRow.username === 'admin' ? 'admin' : '1234');
       if (cleanPass === validPass) {
-        systemStore.setActiveUserId(user.id);
-        return mapUserFromDb(user);
+        systemStore.setActiveUserId(String(userRow.id));
+        return mapUserFromDb(userRow);
       }
     }
     return null;
@@ -80,7 +105,11 @@ export async function dbLoginUser(username: string, password: string): Promise<U
 
   // 2. In-memory fallback (only when Supabase is NOT configured)
   const users = systemStore.getUsers();
-  const user = users.find((u) => u.username.toLowerCase() === cleanUser.toLowerCase());
+  const user = users.find(
+    (u) =>
+      (cleanPhone && u.phone.replace(/[\s-]/g, '') === cleanPhone) ||
+      u.username.toLowerCase() === cleanInput.toLowerCase()
+  );
   if (user) {
     const expectedPass = user.password || (user.username === 'admin' ? 'admin' : '1234');
     if (cleanPass === expectedPass) {
@@ -99,6 +128,7 @@ export async function dbFindOrCreateLineUser(params: {
   phone?: string;
 }): Promise<User> {
   const { lineUserId, displayName, room, phone } = params;
+  const cleanPhone = (phone || '').trim().replace(/[\s-]/g, '');
 
   if (isSupabaseConfigured() && supabase) {
     // 1. Check if user with this line_user_id already exists in Supabase
@@ -124,7 +154,7 @@ export async function dbFindOrCreateLineUser(params: {
       name: displayName || 'ผู้ใช้ LINE',
       username: 'line_' + lineUserId.substring(1, 8).toLowerCase(),
       password: '1234',
-      phone: phone || '',
+      phone: cleanPhone,
       room: room || '101',
       role: 'RECIPIENT',
       line_user_id: lineUserId,
@@ -151,7 +181,7 @@ export async function dbFindOrCreateLineUser(params: {
     name: displayName || 'ผู้ใช้ LINE',
     username: 'line_' + lineUserId.substring(1, 8).toLowerCase(),
     password: '1234',
-    phone: phone || '',
+    phone: cleanPhone,
     room: room || '101',
     role: 'RECIPIENT',
     lineUserId,
@@ -173,14 +203,38 @@ export async function dbGetUsers(): Promise<User[]> {
 }
 
 export async function dbCreateUser(data: Omit<User, 'id'>): Promise<User> {
+  const cleanPhone = (data.phone || '').trim().replace(/[\s-]/g, '');
+  let cleanUsername =
+    (data.username || '').trim() || `u_${cleanPhone || Date.now()}_${Date.now().toString().slice(-4)}`;
+
   if (isSupabaseConfigured() && supabase) {
+    if (cleanPhone) {
+      const { data: existingPhone } = await supabase
+        .from('users')
+        .select('id')
+        .eq('phone', cleanPhone)
+        .limit(1);
+      if (existingPhone && existingPhone.length > 0) {
+        throw new Error('เบอร์โทรศัพท์นี้มีผู้ใช้งานในระบบแล้ว');
+      }
+    }
+
+    const { data: existingUsername } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', cleanUsername)
+      .limit(1);
+    if (existingUsername && existingUsername.length > 0) {
+      cleanUsername = `${cleanUsername}_${Date.now().toString().slice(-4)}`;
+    }
+
     const id = 'usr-' + Date.now();
     const userRow: Record<string, unknown> = {
       id,
       name: data.name,
-      username: data.username,
+      username: cleanUsername,
       password: data.password || '1234',
-      phone: data.phone || '',
+      phone: cleanPhone,
       room: data.room || '',
       role: data.role,
       line_user_id: data.lineUserId || null,
@@ -191,12 +245,33 @@ export async function dbCreateUser(data: Omit<User, 'id'>): Promise<User> {
     }
     return mapUserFromDb(inserted);
   }
-  return systemStore.createUser(data);
+
+  if (cleanPhone && systemStore.getUsers().some((u) => u.phone.replace(/[\s-]/g, '') === cleanPhone)) {
+    throw new Error('เบอร์โทรศัพท์นี้มีผู้ใช้งานในระบบแล้ว');
+  }
+  return systemStore.createUser({ ...data, phone: cleanPhone, username: cleanUsername });
 }
 
 export async function dbUpdateUser(id: string, data: Partial<User>): Promise<User | null> {
+  const cleanPhone = data.phone !== undefined ? data.phone.trim().replace(/[\s-]/g, '') : undefined;
+
   if (isSupabaseConfigured() && supabase) {
+    if (cleanPhone) {
+      const { data: existingPhone } = await supabase
+        .from('users')
+        .select('id')
+        .eq('phone', cleanPhone)
+        .neq('id', id)
+        .limit(1);
+      if (existingPhone && existingPhone.length > 0) {
+        throw new Error('เบอร์โทรศัพท์นี้ถูกใช้งานโดยบัญชีอื่นแล้ว');
+      }
+    }
+
     const updatePayload: Record<string, unknown> = { ...data };
+    if (cleanPhone !== undefined) {
+      updatePayload.phone = cleanPhone;
+    }
     if (data.lineUserId !== undefined) {
       updatePayload.line_user_id = data.lineUserId || null;
       delete updatePayload.lineUserId;
@@ -207,7 +282,14 @@ export async function dbUpdateUser(id: string, data: Partial<User>): Promise<Use
     }
     return updated ? mapUserFromDb(updated) : null;
   }
-  return systemStore.updateUser(id, data);
+
+  if (
+    cleanPhone &&
+    systemStore.getUsers().some((u) => u.id !== id && u.phone.replace(/[\s-]/g, '') === cleanPhone)
+  ) {
+    throw new Error('เบอร์โทรศัพท์นี้ถูกใช้งานโดยบัญชีอื่นแล้ว');
+  }
+  return systemStore.updateUser(id, cleanPhone !== undefined ? { ...data, phone: cleanPhone } : data);
 }
 
 export async function dbUpdateUserRole(id: string, newRole: UserRole): Promise<User | null> {

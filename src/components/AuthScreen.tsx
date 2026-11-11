@@ -5,6 +5,7 @@ import { User } from '@/lib/types';
 import { 
   Lock, 
   User as UserIcon, 
+  Phone,
   Shield, 
   Truck, 
   Package, 
@@ -24,7 +25,7 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenProps) {
-  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,15 +35,16 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
   const [lineModalOpen, setLineModalOpen] = useState(false);
   const [lineName, setLineName] = useState('');
   const [lineUserId, setLineUserId] = useState('');
+  const [linePhone, setLinePhone] = useState('');
   const [lineRoom, setLineRoom] = useState('101');
 
-  const handleLogin = async (e: React.FormEvent | null, customUser?: string, customPass?: string) => {
+  const handleLogin = async (e: React.FormEvent | null, customPhone?: string, customPass?: string) => {
     if (e) e.preventDefault();
-    const u = customUser || username;
+    const ph = customPhone || phone;
     const p = customPass || password;
 
-    if (!u || !p) {
-      setErrorMsg('กรุณากรอก Username และ Password');
+    if (!ph || !p) {
+      setErrorMsg('กรุณากรอกเบอร์โทรศัพท์ และรหัสผ่าน');
       return;
     }
 
@@ -53,7 +55,7 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p }),
+        body: JSON.stringify({ phone: ph, password: p }),
       });
       const data = await res.json();
 
@@ -71,10 +73,10 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
     }
   };
 
-  const handleQuickLogin = (u: string, p: string) => {
-    setUsername(u);
+  const handleQuickLogin = (ph: string, p: string) => {
+    setPhone(ph);
     setPassword(p);
-    handleLogin(null, u, p);
+    handleLogin(null, ph, p);
   };
 
   // LINE Login OAuth 2.1 Trigger
@@ -117,6 +119,7 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
         body: JSON.stringify({
           lineUserId: lineUserId.trim(),
           displayName: lineName.trim() || 'ผู้ใช้ LINE',
+          phone: linePhone.trim().replace(/[\s-]/g, ''),
           room: lineRoom.trim() || '101',
         }),
       });
@@ -169,19 +172,20 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
           )}
 
           <form onSubmit={(e) => handleLogin(e)} className="space-y-4">
-            {/* Username Field */}
+            {/* Phone Field */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <UserIcon className="w-3.5 h-3.5 text-blue-400" /> Username
+                <Phone className="w-3.5 h-3.5 text-blue-400" /> เบอร์โทรศัพท์ (Phone Number)
               </label>
               <div className="relative">
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
                   required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="กรอกชื่อผู้ใช้ เช่น admin, sender1, somchai"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-medium"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="กรอกเบอร์โทร เช่น 0890000000, 0812345678"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-medium font-mono"
                 />
               </div>
             </div>
@@ -257,7 +261,7 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
               {/* Admin Button */}
               <button
                 type="button"
-                onClick={() => handleQuickLogin('admin', 'admin')}
+                onClick={() => handleQuickLogin('0890000000', 'admin')}
                 className="w-full p-2.5 sm:p-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 active:scale-[0.98] border border-amber-500/30 text-amber-300 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left transition group"
               >
                 <div className="flex items-center gap-2">
@@ -265,14 +269,14 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
                   <span>สิทธิ์ Admin (ผู้ดูแลระบบ)</span>
                 </div>
                 <span className="text-[10px] font-mono opacity-80 group-hover:opacity-100 pl-6 sm:pl-0">
-                  user: <strong>admin</strong> / pass: <strong>admin</strong>
+                  โทร: <strong>0890000000</strong> / pass: <strong>admin</strong>
                 </span>
               </button>
 
               {/* Sender Button */}
               <button
                 type="button"
-                onClick={() => handleQuickLogin('sender1', '1234')}
+                onClick={() => handleQuickLogin('0819998888', '1234')}
                 className="w-full p-2.5 sm:p-3 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 active:scale-[0.98] border border-teal-500/30 text-teal-300 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left transition group"
               >
                 <div className="flex items-center gap-2">
@@ -280,14 +284,14 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
                   <span>สิทธิ์ ผู้ส่ง (Courier)</span>
                 </div>
                 <span className="text-[10px] font-mono opacity-80 group-hover:opacity-100 pl-6 sm:pl-0">
-                  user: <strong>sender1</strong> / pass: <strong>1234</strong>
+                  โทร: <strong>0819998888</strong> / pass: <strong>1234</strong>
                 </span>
               </button>
 
               {/* Recipient Button */}
               <button
                 type="button"
-                onClick={() => handleQuickLogin('somchai', '1234')}
+                onClick={() => handleQuickLogin('0812345678', '1234')}
                 className="w-full p-2.5 sm:p-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 active:scale-[0.98] border border-blue-500/30 text-blue-300 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left transition group"
               >
                 <div className="flex items-center gap-2">
@@ -295,7 +299,7 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
                   <span>สิทธิ์ ผู้รับ (ห้อง 101)</span>
                 </div>
                 <span className="text-[10px] font-mono opacity-80 group-hover:opacity-100 pl-6 sm:pl-0">
-                  user: <strong>somchai</strong> / pass: <strong>1234</strong>
+                  โทร: <strong>0812345678</strong> / pass: <strong>1234</strong>
                 </span>
               </button>
             </div>
@@ -363,17 +367,33 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
                 </span>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Home className="w-3.5 h-3.5 text-blue-400" /> เลขห้องพัก / บ้านเลขที่
-                </label>
-                <input
-                  type="text"
-                  value={lineRoom}
-                  onChange={(e) => setLineRoom(e.target.value)}
-                  placeholder="เช่น 101, 205"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-blue-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-emerald-400" /> เบอร์โทรศัพท์
+                  </label>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    value={linePhone}
+                    onChange={(e) => setLinePhone(e.target.value)}
+                    placeholder="เช่น 0812345678"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                    <Home className="w-3.5 h-3.5 text-blue-400" /> เลขห้องพัก / บ้านเลขที่
+                  </label>
+                  <input
+                    type="text"
+                    value={lineRoom}
+                    onChange={(e) => setLineRoom(e.target.value)}
+                    placeholder="เช่น 101, 205"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
 
               <div className="pt-2">

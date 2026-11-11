@@ -3,20 +3,21 @@ import { dbLoginUser } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
-    const { username, password } = await req.json();
+    const { phone, username, password } = await req.json();
+    const loginIdentifier = phone || username;
 
-    if (!username || !password) {
+    if (!loginIdentifier || !password) {
       return NextResponse.json(
-        { success: false, message: 'กรุณากรอก Username และ Password' },
+        { success: false, message: 'กรุณากรอกเบอร์โทรศัพท์ และรหัสผ่าน' },
         { status: 400 }
       );
     }
 
-    const user = await dbLoginUser(username, password);
+    const user = await dbLoginUser(loginIdentifier, password);
 
     if (!user) {
       return NextResponse.json(
-        { success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' },
+        { success: false, message: 'เบอร์โทรศัพท์หรือรหัสผ่านไม่ถูกต้อง' },
         { status: 401 }
       );
     }

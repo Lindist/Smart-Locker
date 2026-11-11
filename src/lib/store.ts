@@ -154,7 +154,7 @@ class SystemStore {
     if (index === -1) return false;
 
     const removed = this.users.splice(index, 1)[0];
-    this.addLog('DELETE', `ลบผู้ใช้: ${removed.name} (${removed.username})`);
+    this.addLog('DELETE', `ลบผู้ใช้: ${removed.name} (${removed.phone || removed.username})`);
     return true;
   }
 

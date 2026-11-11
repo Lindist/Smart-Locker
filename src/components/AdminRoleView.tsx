@@ -33,6 +33,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
 
   // User form modal state
   const [userModalOpen, setUserModalOpen] = useState(false);
+  const [userModalError, setUserModalError] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState({
     name: '',
@@ -150,6 +151,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setUserModalError('');
     try {
       if (editingUser) {
         // Update
@@ -174,9 +176,11 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
       }
       setUserModalOpen(false);
       setEditingUser(null);
+      setUserModalError('');
       onRefresh();
     } catch (err: unknown) {
-      showMessage('error', err instanceof Error ? err.message : 'Error');
+      const errorText = err instanceof Error ? err.message : 'Error';
+      setUserModalError(errorText);
     } finally {
       setLoading(false);
     }
@@ -418,6 +422,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
             <button
               onClick={() => {
                 setEditingUser(null);
+                setUserModalError('');
                 setUserForm({ name: '', username: '', password: '1234', phone: '', room: '', role: 'RECIPIENT', lineUserId: '' });
                 setUserModalOpen(true);
               }}
@@ -437,10 +442,11 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-bold text-sm text-white truncate">{u.name}</div>
-                    <div className="text-xs font-mono text-slate-400 truncate">@{u.username}</div>
-                    <div className="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                      <span>ห้อง/แผนก: <strong className="text-slate-200">{u.room || '-'}</strong></span>
-                      <span>โทร: <strong className="text-slate-200 font-mono">{u.phone || '-'}</strong></span>
+                    <div className="text-xs font-mono text-blue-400 truncate mt-0.5">
+                      📞 {u.phone || 'ยังไม่ระบุเบอร์โทร'}
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1">
+                      ห้อง/แผนก: <strong className="text-slate-200">{u.room || '-'}</strong>
                     </div>
                   </div>
                   {u.lineUserId && (
@@ -472,6 +478,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                       type="button"
                       onClick={() => {
                         setEditingUser(u);
+                        setUserModalError('');
                         setUserForm({
                           name: u.name,
                           username: u.username,
@@ -508,9 +515,9 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
               <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="p-3">ชื่อ - นามสกุล</th>
-                  <th className="p-3">Username</th>
+                  <th className="p-3">เบอร์โทร (ใช้เข้าสู่ระบบ)</th>
                   <th className="p-3">ห้อง / แผนก</th>
-                  <th className="p-3">เบอร์โทร</th>
+                  <th className="p-3">LINE</th>
                   <th className="p-3">สิทธิ์ใช้งาน (Role)</th>
                   <th className="p-3 text-right">การจัดการ</th>
                 </tr>
@@ -519,9 +526,17 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                 {users.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-800/50 transition">
                     <td className="p-3 font-semibold text-white">{u.name}</td>
-                    <td className="p-3 font-mono text-slate-400">{u.username}</td>
+                    <td className="p-3 font-mono text-blue-400 font-semibold">{u.phone || '-'}</td>
                     <td className="p-3">{u.room || '-'}</td>
-                    <td className="p-3 font-mono">{u.phone || '-'}</td>
+                    <td className="p-3">
+                      {u.lineUserId ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#06C755]/20 text-[#06C755] border border-[#06C755]/30">
+                          เชื่อมต่อแล้ว
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-500">-</span>
+                      )}
+                    </td>
                     <td className="p-3">
                       {/* Role selection dropdown */}
                       <select
@@ -546,6 +561,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                           type="button"
                           onClick={() => {
                             setEditingUser(u);
+                            setUserModalError('');
                             setUserForm({
                               name: u.name,
                               username: u.username,
@@ -744,12 +760,22 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                 {editingUser ? 'แก้ไขข้อมูลผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่'}
               </h4>
               <button
-                onClick={() => setUserModalOpen(false)}
+                onClick={() => {
+                  setUserModalError('');
+                  setUserModalOpen(false);
+                }}
                 className="text-slate-400 hover:text-white p-1"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {userModalError && (
+              <div className="mb-4 p-3 bg-rose-500/20 border border-rose-500/50 text-rose-300 rounded-xl flex items-center gap-2 text-xs">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{userModalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveUser} className="space-y-4">
               <div>
@@ -765,12 +791,14 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Username</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">เบอร์โทรศัพท์ (ใช้เข้าสู่ระบบ)</label>
                   <input
-                    type="text"
-                    required
-                    value={userForm.username}
-                    onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                    type="tel"
+                    inputMode="tel"
+                    required={!editingUser?.lineUserId}
+                    value={userForm.phone}
+                    onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                    placeholder="เช่น 0812345678"
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
@@ -795,32 +823,23 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                     type="text"
                     value={userForm.room}
                     onChange={(e) => setUserForm({ ...userForm, room: e.target.value })}
+                    placeholder="เช่น 101"
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">เบอร์โทรศัพท์</label>
-                  <input
-                    type="tel"
-                    value={userForm.phone}
-                    onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-base sm:text-sm text-white font-mono focus:outline-none focus:border-blue-500"
-                  />
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">กำหนดสิทธิ์ (Role)</label>
+                  <select
+                    value={userForm.role}
+                    onChange={(e) => setUserForm({ ...userForm, role: e.target.value as UserRole })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="RECIPIENT">ผู้รับ (RECIPIENT)</option>
+                    <option value="SENDER">ผู้ส่ง (SENDER)</option>
+                    <option value="ADMIN">Admin (ADMIN)</option>
+                  </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">กำหนดสิทธิ์ (Role)</label>
-                <select
-                  value={userForm.role}
-                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value as UserRole })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="RECIPIENT">ผู้รับ (RECIPIENT)</option>
-                  <option value="SENDER">ผู้ส่ง (SENDER)</option>
-                  <option value="ADMIN">Admin (ADMIN)</option>
-                </select>
               </div>
 
               <div>
@@ -839,7 +858,10 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4">
                 <button
                   type="button"
-                  onClick={() => setUserModalOpen(false)}
+                  onClick={() => {
+                    setUserModalError('');
+                    setUserModalOpen(false);
+                  }}
                   className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold"
                 >
                   ยกเลิก

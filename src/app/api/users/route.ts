@@ -11,15 +11,20 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { name, username, phone, room, role, password, lineUserId } = body;
-    if (!name || !username) {
-      return NextResponse.json({ success: false, message: 'กรุณากรอกชื่อและ Username' }, { status: 400 });
+    const cleanPhone = (phone || '').trim().replace(/[\s-]/g, '');
+
+    if (!name || (!cleanPhone && !username)) {
+      return NextResponse.json(
+        { success: false, message: 'กรุณากรอกชื่อและเบอร์โทรศัพท์' },
+        { status: 400 }
+      );
     }
 
     const newUser = await dbCreateUser({
       name,
-      username,
+      username: (username || '').trim(),
       password: password || '1234',
-      phone: phone || '',
+      phone: cleanPhone,
       room: room || '',
       role: (role as UserRole) || 'RECIPIENT',
       lineUserId: lineUserId || '',
@@ -41,19 +46,16 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Missing user ID' }, { status: 400 });
     }
 
-    // Role assignment
-    if (role) {
-      const updated = await dbUpdateUserRole(id, role as UserRole);
-      if (!updated) return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
-    }
-
-    // Update other fields
+    let user = null;
     if (Object.keys(rest).length > 0) {
-      await dbUpdateUser(id, rest);
+      user = await dbUpdateUser(id, role ? { ...rest, role: role as UserRole } : rest);
+    } else if (role) {
+      user = await dbUpdateUserRole(id, role as UserRole);
     }
 
-    const users = await dbGetUsers();
-    const user = users.find((u) => u.id === id);
+    if (!user) {
+      return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, data: user, message: 'อัปเดตข้อมูลผู้ใช้สำเร็จ' });
   } catch (err: unknown) {
