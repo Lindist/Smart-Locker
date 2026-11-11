@@ -147,9 +147,9 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
           </p>
           <div className="mt-2">
             {isSupabase ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                Supabase Connected
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+                กรณีเข้าใช้งานครั้งแรกให้เข้าผ่านLineหนึ่งครั้งก่อน ล็อกอินได้ตามปกติ
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-normal bg-slate-900 text-slate-400 border border-slate-800">
@@ -224,9 +224,9 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
           </form>
 
           {/* OR LINE LOGIN DIVIDER */}
-          <div className="relative my-6 flex items-center justify-center">
-            <div className="border-t border-slate-800 w-full"></div>
-            <span className="bg-slate-900 px-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold">
+          <div className="my-5 flex flex-col items-center gap-3">
+            <div className="w-full border-t border-slate-800"></div>
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">
               หรือเข้าใช้งานด้วย
             </span>
           </div>

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { User, Locker } from '@/lib/types';
+import BarcodeScanner from './BarcodeScanner';
 import { 
   Package, 
   Unlock, 
@@ -10,10 +11,11 @@ import {
   AlertCircle, 
   Truck, 
   ArrowRight, 
-  RotateCcw,
-  UserCheck,
-  Barcode,
-  DoorOpen
+  RotateCcw, 
+  UserCheck, 
+  Barcode, 
+  DoorOpen,
+  Camera
 } from 'lucide-react';
 
 interface SenderViewProps {
@@ -34,6 +36,7 @@ export default function SenderView({ currentUser, lockers, users, onRefresh }: S
 
   const [recipientId, setRecipientId] = useState('');
   const [trackingCode, setTrackingCode] = useState('');
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successData, setSuccessData] = useState<{ message: string; pin?: string } | null>(null);
@@ -274,18 +277,28 @@ export default function SenderView({ currentUser, lockers, users, onRefresh }: S
               </select>
             </div>
 
-            {/* Tracking Code */}
+            {/* Tracking Code with Camera QR/Barcode Scanner Button */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-2 flex items-center gap-1.5">
-                <Barcode className="w-4 h-4 text-teal-400" />
-                หมายเลขพัสดุ (Tracking Number):
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Barcode className="w-4 h-4 text-teal-400" />
+                  หมายเลขพัสดุ (Tracking Number):
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setScannerOpen(true)}
+                  className="px-3 py-1 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition active:scale-95"
+                >
+                  <Camera className="w-3.5 h-3.5 text-teal-400" />
+                  เปิดกล้องสแกน QR / บาร์โค้ด
+                </button>
+              </div>
               <input
                 type="text"
                 required
                 value={trackingCode}
                 onChange={(e) => setTrackingCode(e.target.value)}
-                placeholder="เช่น TH-12345678"
+                placeholder="เช่น TH-12345678 (หรือแตะปุ่มสแกนด้านบน)"
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-teal-500"
               />
             </div>
@@ -398,6 +411,17 @@ export default function SenderView({ currentUser, lockers, users, onRefresh }: S
             })}
           </div>
         </div>
+      )}
+
+      {/* Barcode & QR Camera Scanner Modal */}
+      {scannerOpen && (
+        <BarcodeScanner
+          onScanSuccess={(code) => {
+            setTrackingCode(code);
+            setScannerOpen(false);
+          }}
+          onClose={() => setScannerOpen(false)}
+        />
       )}
     </div>
   );
