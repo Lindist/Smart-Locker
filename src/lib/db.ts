@@ -64,16 +64,21 @@ export async function dbLoginUser(username: string, password: string): Promise<U
       .ilike('username', cleanUser)
       .single();
 
-    if (!error && user) {
+    if (error && error.code !== 'PGRST116') {
+      throw new Error(`เชื่อมต่อฐานข้อมูล Supabase ไม่สำเร็จ: ${error.message}`);
+    }
+
+    if (user) {
       const validPass = user.password || (user.username === 'admin' ? 'admin' : '1234');
       if (cleanPass === validPass) {
         systemStore.setActiveUserId(user.id);
-        return user as User;
+        return mapUserFromDb(user);
       }
     }
+    return null;
   }
 
-  // 2. In-memory fallback
+  // 2. In-memory fallback (only when Supabase is NOT configured)
   const users = systemStore.getUsers();
   const user = users.find((u) => u.username.toLowerCase() === cleanUser.toLowerCase());
   if (user) {
@@ -97,11 +102,15 @@ export async function dbFindOrCreateLineUser(params: {
 
   if (isSupabaseConfigured() && supabase) {
     // 1. Check if user with this line_user_id already exists in Supabase
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: findErr } = await supabase
       .from('users')
       .select('*')
       .eq('line_user_id', lineUserId)
       .single();
+
+    if (findErr && findErr.code !== 'PGRST116') {
+      throw new Error(`ค้นหาผู้ใช้ Supabase ล้มเหลว: ${findErr.message}`);
+    }
 
     if (existingUser) {
       systemStore.setActiveUserId(existingUser.id);
@@ -122,10 +131,12 @@ export async function dbFindOrCreateLineUser(params: {
     };
 
     const { data: inserted, error } = await supabase.from('users').insert([newUserRow]).select().single();
-    if (!error && inserted) {
-      systemStore.setActiveUserId(inserted.id);
-      return mapUserFromDb(inserted);
+    if (error || !inserted) {
+      throw new Error(`บันทึกผู้ใช้ใหม่ลง Supabase ไม่สำเร็จ: ${error?.message || 'Permission denied / RLS'}`);
     }
+
+    systemStore.setActiveUserId(inserted.id);
+    return mapUserFromDb(inserted);
   }
 
   // Fallback to in-memory store
@@ -152,7 +163,11 @@ export async function dbFindOrCreateLineUser(params: {
 export async function dbGetUsers(): Promise<User[]> {
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase.from('users').select('*');
-    if (!error && data) return data.map(mapUserFromDb);
+    if (error) {
+      console.error('Supabase dbGetUsers error:', error);
+      return [];
+    }
+    return (data || []).map(mapUserFromDb);
   }
   return systemStore.getUsers();
 }
@@ -171,7 +186,10 @@ export async function dbCreateUser(data: Omit<User, 'id'>): Promise<User> {
       line_user_id: data.lineUserId || null,
     };
     const { data: inserted, error } = await supabase.from('users').insert([userRow]).select().single();
-    if (!error && inserted) return mapUserFromDb(inserted);
+    if (error || !inserted) {
+      throw new Error(`สร้างผู้ใช้ใน Supabase ไม่สำเร็จ: ${error?.message || 'Unknown error'}`);
+    }
+    return mapUserFromDb(inserted);
   }
   return systemStore.createUser(data);
 }
@@ -184,7 +202,10 @@ export async function dbUpdateUser(id: string, data: Partial<User>): Promise<Use
       delete updatePayload.lineUserId;
     }
     const { data: updated, error } = await supabase.from('users').update(updatePayload).eq('id', id).select().single();
-    if (!error && updated) return mapUserFromDb(updated);
+    if (error) {
+      throw new Error(`อัปเดตผู้ใช้ไม่สำเร็จ: ${error.message}`);
+    }
+    return updated ? mapUserFromDb(updated) : null;
   }
   return systemStore.updateUser(id, data);
 }
@@ -192,7 +213,10 @@ export async function dbUpdateUser(id: string, data: Partial<User>): Promise<Use
 export async function dbUpdateUserRole(id: string, newRole: UserRole): Promise<User | null> {
   if (isSupabaseConfigured() && supabase) {
     const { data: updated, error } = await supabase.from('users').update({ role: newRole }).eq('id', id).select().single();
-    if (!error && updated) return updated as User;
+    if (error) {
+      throw new Error(`เปลี่ยนสิทธิ์ผู้ใช้ไม่สำเร็จ: ${error.message}`);
+    }
+    return updated ? mapUserFromDb(updated) : null;
   }
   return systemStore.updateUserRole(id, newRole);
 }
@@ -200,7 +224,8 @@ export async function dbUpdateUserRole(id: string, newRole: UserRole): Promise<U
 export async function dbDeleteUser(id: string): Promise<boolean> {
   if (isSupabaseConfigured() && supabase) {
     const { error } = await supabase.from('users').delete().eq('id', id);
-    return !error;
+    if (error) throw new Error(`ลบผู้ใช้ไม่สำเร็จ: ${error.message}`);
+    return true;
   }
   return systemStore.deleteUser(id);
 }
@@ -211,9 +236,11 @@ export async function dbDeleteUser(id: string): Promise<boolean> {
 export async function dbGetLockers(): Promise<Locker[]> {
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase.from('lockers').select('*').order('number', { ascending: true });
-    if (!error && data && data.length > 0) {
-      return data.map(mapLockerFromDb);
+    if (error) {
+      console.error('Supabase dbGetLockers error:', error);
+      return [];
     }
+    return (data || []).map(mapLockerFromDb);
   }
   return systemStore.getLockers();
 }
@@ -222,7 +249,13 @@ export async function dbGetLockers(): Promise<Locker[]> {
 export async function dbSenderSelectAndUnlock(lockerId: string): Promise<Locker> {
   if (isSupabaseConfigured() && supabase) {
     const { data: lockerData, error: fetchErr } = await supabase.from('lockers').select('*').eq('id', lockerId).single();
-    if (fetchErr || !lockerData) throw new Error('ไม่พบตู้ที่ระบุ');
+    if (fetchErr) {
+      if (fetchErr.code === 'PGRST116') {
+        throw new Error(`ไม่พบตู้ ${lockerId} ใน Supabase (ตรวจสอบว่าปิด RLS หรือมีข้อมูลตู้แล้ว)`);
+      }
+      throw new Error(`ดึงข้อมูลตู้จาก Supabase ไม่สำเร็จ: ${fetchErr.message}`);
+    }
+    if (!lockerData) throw new Error('ไม่พบตู้ที่ระบุ');
     if (lockerData.status === 'OCCUPIED') throw new Error(`${lockerData.name} มีพัสดุอยู่แล้ว`);
 
     const { data: updated, error: updateErr } = await supabase
@@ -232,7 +265,10 @@ export async function dbSenderSelectAndUnlock(lockerId: string): Promise<Locker>
       .select()
       .single();
 
-    if (!updateErr && updated) return mapLockerFromDb(updated);
+    if (updateErr || !updated) {
+      throw new Error(`สั่งเปิดตู้ใน Supabase ไม่สำเร็จ: ${updateErr?.message || 'อาจติดสิทธิ์ RLS Policy'}`);
+    }
+    return mapLockerFromDb(updated);
   }
   return systemStore.senderSelectAndUnlockLocker(lockerId);
 }
@@ -391,7 +427,10 @@ export async function dbAdminUnlockLocker(lockerId: string): Promise<Locker> {
       .eq('id', lockerId)
       .select()
       .single();
-    if (!error && updated) return mapLockerFromDb(updated);
+    if (error || !updated) {
+      throw new Error(`ปลดล็อกตู้ ${lockerId} ไม่สำเร็จ: ${error?.message || 'ไม่พบตู้ หรือติด RLS'}`);
+    }
+    return mapLockerFromDb(updated);
   }
   return systemStore.adminUnlockLocker(lockerId);
 }
@@ -404,7 +443,10 @@ export async function dbAdminCloseLocker(lockerId: string): Promise<Locker> {
       .eq('id', lockerId)
       .select()
       .single();
-    if (!error && updated) return mapLockerFromDb(updated);
+    if (error || !updated) {
+      throw new Error(`ปิดประตูตู้ ${lockerId} ไม่สำเร็จ: ${error?.message || 'ไม่พบตู้ หรือติด RLS'}`);
+    }
+    return mapLockerFromDb(updated);
   }
   return systemStore.adminCloseLocker(lockerId);
 }
@@ -427,7 +469,10 @@ export async function dbAdminResetLocker(lockerId: string): Promise<Locker> {
       .eq('id', lockerId)
       .select()
       .single();
-    if (!error && updated) return mapLockerFromDb(updated);
+    if (error || !updated) {
+      throw new Error(`รีเซ็ตตู้ ${lockerId} ไม่สำเร็จ: ${error?.message || 'ไม่พบตู้ หรือติด RLS'}`);
+    }
+    return mapLockerFromDb(updated);
   }
   return systemStore.adminResetLocker(lockerId);
 }
@@ -442,9 +487,11 @@ export async function dbGetParcels(recipientId?: string): Promise<Parcel[]> {
       query = query.eq('recipient_id', recipientId);
     }
     const { data, error } = await query;
-    if (!error && data) {
-      return data.map(mapParcelFromDb);
+    if (error) {
+      console.error('Supabase dbGetParcels error:', error);
+      return [];
     }
+    return (data || []).map(mapParcelFromDb);
   }
 
   let parcels = systemStore.getParcels();
@@ -468,7 +515,10 @@ export async function dbUpdateParcel(id: string, data: Partial<Parcel>): Promise
       .select()
       .single();
 
-    if (!error && updated) return mapParcelFromDb(updated);
+    if (error) {
+      throw new Error(`แก้ไขพัสดุไม่สำเร็จ: ${error.message}`);
+    }
+    return updated ? mapParcelFromDb(updated) : null;
   }
   return systemStore.updateParcel(id, data);
 }
@@ -478,7 +528,10 @@ export async function dbDeleteParcel(id: string): Promise<boolean> {
     // Check if parcel was assigned to a locker
     const { data: parcel } = await supabase.from('parcels').select('locker_id').eq('id', id).single();
     const { error } = await supabase.from('parcels').delete().eq('id', id);
-    if (!error && parcel?.locker_id) {
+    if (error) {
+      throw new Error(`ลบพัสดุไม่สำเร็จ: ${error.message}`);
+    }
+    if (parcel?.locker_id) {
       // If locker was holding this parcel, free it
       await supabase
         .from('lockers')
@@ -486,7 +539,7 @@ export async function dbDeleteParcel(id: string): Promise<boolean> {
         .eq('id', parcel.locker_id)
         .eq('current_parcel_id', id);
     }
-    return !error;
+    return true;
   }
   return systemStore.deleteParcel(id);
 }

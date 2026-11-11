@@ -324,6 +324,15 @@ export default function SenderView({ currentUser, lockers, users, onRefresh }: S
             </div>
           </div>
 
+          {lockers.length === 0 ? (
+            <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 text-center space-y-2">
+              <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
+              <h4 className="text-sm font-bold text-white">ไม่พบข้อมูลตู้ล็อกเกอร์ในฐานข้อมูล</h4>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                หากเพิ่งเชื่อมต่อ Supabase บน Vercel กรุณาตรวจสอบว่าได้ปิด Row Level Security (RLS) ใน Supabase SQL Editor หรือตั้งค่า <code className="text-amber-300">SUPABASE_SERVICE_ROLE_KEY</code> แล้ว
+              </p>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {lockers.map((locker) => {
               const isAvailable = locker.status === 'AVAILABLE';
@@ -401,6 +410,7 @@ export default function SenderView({ currentUser, lockers, users, onRefresh }: S
               );
             })}
           </div>
+          )}
         </div>
       )}
     </div>
