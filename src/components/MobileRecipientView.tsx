@@ -48,22 +48,22 @@ export default function MobileRecipientView({
   };
 
   return (
-    <div className="w-full max-w-sm mx-auto bg-slate-900 text-white rounded-3xl shadow-2xl border-4 border-slate-700 overflow-hidden flex flex-col min-h-[580px]">
+    <div className="w-full max-w-sm mx-auto bg-slate-900 text-white rounded-2xl sm:rounded-3xl shadow-2xl border-2 sm:border-4 border-slate-700 overflow-hidden flex flex-col min-h-[460px] sm:min-h-[540px]">
       {/* Mobile Top App Bar */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-4 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Package className="w-6 h-6 text-emerald-200" />
-            <h2 className="font-bold text-base tracking-wide">Parcel Locker Pickup</h2>
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-4 sm:px-5 py-3.5 sm:py-4 text-white">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Package className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-200 shrink-0" />
+            <h2 className="font-bold text-sm sm:text-base tracking-wide truncate">Parcel Locker Pickup</h2>
           </div>
-          <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
+          <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono shrink-0">
             LINE Connected
           </span>
         </div>
         <p className="text-xs text-emerald-100 mt-1">ระบบเปิดตู้รับพัสดุอัจฉริยะ</p>
       </div>
 
-      <div className="p-5 flex-1 flex flex-col justify-between">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
         {/* Error Notification */}
         {errorMsg && (
           <div className="mb-4 bg-rose-500/20 border border-rose-500/50 text-rose-300 p-3 rounded-xl flex items-center gap-2 text-xs">

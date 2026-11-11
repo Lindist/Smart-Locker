@@ -51,7 +51,11 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
           cameraConfig,
           {
             fps: 10,
-            qrbox: { width: 220, height: 220 },
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+              const size = Math.max(150, Math.min(240, Math.floor(minEdge * 0.7)));
+              return { width: size, height: size };
+            },
             aspectRatio: 1.0,
           },
           (decodedText) => {
@@ -124,16 +128,16 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
   }, [onClose]);
 
   return (
-    <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-5 shadow-2xl relative overflow-hidden">
+    <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl relative overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3 sm:mb-4 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
             <Camera className="w-4 h-4 animate-pulse" />
           </div>
-          <div>
-            <h4 className="font-bold text-sm text-white">กล้องสแกน QR Code (Scanner)</h4>
-            <p className="text-[11px] text-slate-400">ส่องกล้องไปที่ QR Code ที่หน้าตู้พัสดุ</p>
+          <div className="min-w-0">
+            <h4 className="font-bold text-xs sm:text-sm text-white truncate">กล้องสแกน QR Code (Scanner)</h4>
+            <p className="text-[11px] text-slate-400 truncate">ส่องกล้องไปที่ QR Code ที่หน้าตู้พัสดุ</p>
           </div>
         </div>
 
@@ -141,7 +145,8 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
           <button
             type="button"
             onClick={handleStop}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition"
+            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition shrink-0"
+            aria-label="ปิดกล้อง"
           >
             <X className="w-4 h-4" />
           </button>
@@ -149,7 +154,7 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
       </div>
 
       {/* Camera Viewport Area */}
-      <div className="relative rounded-2xl overflow-hidden bg-black flex flex-col items-center justify-center min-h-[280px]">
+      <div className="relative rounded-2xl overflow-hidden bg-black flex flex-col items-center justify-center min-h-[240px] sm:min-h-[280px]">
         {/* Stable container for html5-qrcode */}
         <div
           id={containerIdRef.current}
@@ -160,7 +165,7 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
         {isScanning && !cameraError && (
           <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
             {/* Viewfinder Target Box */}
-            <div className="w-56 h-56 border-2 border-emerald-400/70 rounded-2xl relative shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <div className="w-44 h-44 sm:w-56 sm:h-56 border-2 border-emerald-400/70 rounded-2xl relative shadow-[0_0_15px_rgba(16,185,129,0.3)]">
               {/* Corner brackets */}
               <div className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-emerald-400 rounded-tl"></div>
               <div className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-emerald-400 rounded-tr"></div>
@@ -170,7 +175,7 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
               {/* Animated Laser Bar */}
               <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_8px_#34d399] animate-pulse absolute top-1/2 -translate-y-1/2"></div>
             </div>
-            <span className="text-[11px] text-emerald-300 font-medium bg-black/70 px-3 py-1 rounded-full mt-3 backdrop-blur border border-emerald-500/30">
+            <span className="text-[11px] text-emerald-300 font-medium bg-black/70 px-3 py-1 rounded-full mt-2 sm:mt-3 backdrop-blur border border-emerald-500/30">
               กำลังค้นหา QR Code...
             </span>
           </div>
@@ -178,10 +183,10 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
 
         {/* Camera Permission / Error message */}
         {cameraError && (
-          <div className="p-6 text-center text-slate-400 flex flex-col items-center">
+          <div className="p-5 sm:p-6 text-center text-slate-400 flex flex-col items-center">
             <CameraOff className="w-10 h-10 text-rose-400 mb-2" />
             <p className="text-xs text-rose-300 font-semibold mb-1">{cameraError}</p>
-            <p className="text-[11px] text-slate-500 max-w-xs mb-4">
+            <p className="text-[11px] text-slate-500 max-w-xs mb-2">
               หากใช้งานบนอุปกรณ์ที่ไม่มีกล้อง หรือยังไม่ได้กดอนุญาต คุณสามารถกรอกรหัส PIN หรือกดปุ่มปลดล็อกได้โดยตรง
             </p>
           </div>
@@ -189,16 +194,16 @@ export default function QrScanner({ onScanSuccess, onClose, active = true }: QrS
       </div>
 
       {/* Footer controls */}
-      <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
+      <div className="mt-3 sm:mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
         <span className="flex items-center gap-1.5 text-[11px]">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-          ระบบจะสั่งปลดล็อกตู้ทันทีเมื่อสแกนเจอ
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <span>ระบบจะสั่งปลดล็อกตู้ทันทีเมื่อสแกนเจอ</span>
         </span>
         {onClose && (
           <button
             type="button"
             onClick={handleStop}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition"
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition ml-auto"
           >
             ปิดกล้อง
           </button>

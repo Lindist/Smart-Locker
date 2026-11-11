@@ -134,22 +134,22 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4">
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-3 py-6 sm:p-4">
       <div className="w-full max-w-md">
         {/* Logo & Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-teal-500 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-500/20 text-3xl">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-teal-500 flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-xl shadow-blue-500/20 text-2xl sm:text-3xl">
             📦
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Smart Parcel Locker</h1>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Smart Parcel Locker</h1>
           <p className="text-xs text-slate-400 mt-1">
             ระบบตู้ไปรษณีย์อัจฉริยะ • กรุณาเข้าสู่ระบบตามสิทธิ์ของคุณ
           </p>
-          <div className="mt-2">
+          <div className="mt-2.5 flex justify-center">
             {isSupabase ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
-                กรณีเข้าใช้งานครั้งแรกให้เข้าผ่านLineหนึ่งครั้งก่อน ล็อกอินได้ตามปกติ
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-center leading-relaxed">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"></span>
+                <span>กรณีเข้าใช้งานครั้งแรกให้เข้าผ่าน Line หนึ่งครั้งก่อน ล็อกอินได้ตามปกติ</span>
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-normal bg-slate-900 text-slate-400 border border-slate-800">
@@ -160,7 +160,7 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
         </div>
 
         {/* Main Login Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl backdrop-blur">
           {errorMsg && (
             <div className="mb-5 p-3.5 bg-rose-500/20 border border-rose-500/50 text-rose-300 rounded-2xl flex items-center gap-2.5 text-xs animate-in fade-in">
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
@@ -181,7 +181,7 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="กรอกชื่อผู้ใช้ เช่น admin, sender1, somchai"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-medium"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-medium"
                 />
               </div>
             </div>
@@ -198,12 +198,13 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="กรอกรหัสผ่าน"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-medium"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 pr-11 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-medium"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                  aria-label="แสดงหรือซ่อนรหัสผ่าน"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -236,17 +237,17 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
             type="button"
             onClick={handleLineLogin}
             disabled={loading}
-            className="w-full py-3.5 bg-[#06C755] hover:bg-[#05b34c] active:scale-95 text-white font-bold text-sm rounded-xl shadow-xl shadow-[#06C755]/20 transition flex items-center justify-center gap-2.5"
+            className="w-full py-3.5 bg-[#06C755] hover:bg-[#05b34c] active:scale-95 text-white font-bold text-sm rounded-xl shadow-xl shadow-[#06C755]/20 transition flex items-center justify-center gap-2.5 px-3"
           >
             {/* LINE Official Speech Bubble Icon */}
             <svg className="w-5 h-5 fill-current flex-shrink-0" viewBox="0 0 24 24">
               <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.121.303.079.778.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.54 6.911-4.069 9.428-6.967 1.739-1.907 2.572-3.843 2.572-5.992z"/>
             </svg>
-            <span>เข้าสู่ระบบด้วย LINE (LINE Login / LIFF)</span>
+            <span className="truncate">เข้าสู่ระบบด้วย LINE (LINE Login / LIFF)</span>
           </button>
 
           {/* Quick Demo Login Section */}
-          <div className="mt-8 pt-6 border-t border-slate-800">
+          <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-slate-800">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-3 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               คลิกเพื่อทดสอบเข้าสู่ระบบด่วน:
@@ -257,13 +258,13 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
               <button
                 type="button"
                 onClick={() => handleQuickLogin('admin', 'admin')}
-                className="w-full p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-between transition group"
+                className="w-full p-2.5 sm:p-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 active:scale-[0.98] border border-amber-500/30 text-amber-300 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left transition group"
               >
                 <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-amber-400" />
+                  <Shield className="w-4 h-4 text-amber-400 shrink-0" />
                   <span>สิทธิ์ Admin (ผู้ดูแลระบบ)</span>
                 </div>
-                <span className="text-[10px] font-mono opacity-70 group-hover:opacity-100">
+                <span className="text-[10px] font-mono opacity-80 group-hover:opacity-100 pl-6 sm:pl-0">
                   user: <strong>admin</strong> / pass: <strong>admin</strong>
                 </span>
               </button>
@@ -272,13 +273,13 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
               <button
                 type="button"
                 onClick={() => handleQuickLogin('sender1', '1234')}
-                className="w-full p-2.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-teal-300 text-xs font-semibold flex items-center justify-between transition group"
+                className="w-full p-2.5 sm:p-3 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 active:scale-[0.98] border border-teal-500/30 text-teal-300 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left transition group"
               >
                 <div className="flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-teal-400" />
+                  <Truck className="w-4 h-4 text-teal-400 shrink-0" />
                   <span>สิทธิ์ ผู้ส่ง (Courier)</span>
                 </div>
-                <span className="text-[10px] font-mono opacity-70 group-hover:opacity-100">
+                <span className="text-[10px] font-mono opacity-80 group-hover:opacity-100 pl-6 sm:pl-0">
                   user: <strong>sender1</strong> / pass: <strong>1234</strong>
                 </span>
               </button>
@@ -287,13 +288,13 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
               <button
                 type="button"
                 onClick={() => handleQuickLogin('somchai', '1234')}
-                className="w-full p-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold flex items-center justify-between transition group"
+                className="w-full p-2.5 sm:p-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 active:scale-[0.98] border border-blue-500/30 text-blue-300 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left transition group"
               >
                 <div className="flex items-center gap-2">
-                  <Package className="w-4 h-4 text-blue-400" />
+                  <Package className="w-4 h-4 text-blue-400 shrink-0" />
                   <span>สิทธิ์ ผู้รับ (ห้อง 101)</span>
                 </div>
-                <span className="text-[10px] font-mono opacity-70 group-hover:opacity-100">
+                <span className="text-[10px] font-mono opacity-80 group-hover:opacity-100 pl-6 sm:pl-0">
                   user: <strong>somchai</strong> / pass: <strong>1234</strong>
                 </span>
               </button>
@@ -302,8 +303,8 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
         </div>
 
         {/* Footer info */}
-        <p className="text-center text-xs text-slate-500 mt-6">
-          Intelligent Parcel Locker System • Authentication & LINE Gateway
+        <p className="text-center text-[11px] sm:text-xs text-slate-500 mt-5 sm:mt-6 px-2">
+          Intelligent Parcel Locker System • Authentication &amp; LINE Gateway
         </p>
       </div>
 
@@ -311,16 +312,16 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
       {/* MODAL: LINE CONNECT / LIFF AUTO-SIGN IN                                  */}
       {/* ========================================================================= */}
       {lineModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl sm:rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 sm:p-8 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
               <div className="flex items-center gap-2 text-[#06C755] font-bold text-base">
-                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
                   <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.121.303.079.778.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.54 6.911-4.069 9.428-6.967 1.739-1.907 2.572-3.843 2.572-5.992z"/>
                 </svg>
                 <span>เข้าใช้งานด้วยบัญชี LINE</span>
               </div>
-              <button onClick={() => setLineModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setLineModalOpen(false)} className="text-slate-400 hover:text-white p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -340,7 +341,7 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
                   value={lineName}
                   onChange={(e) => setLineName(e.target.value)}
                   placeholder="เช่น สมศักดิ์ หรือชื่อ LINE ของคุณ"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#06C755]"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-[#06C755]"
                 />
               </div>
 
@@ -355,7 +356,7 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
                   value={lineUserId}
                   onChange={(e) => setLineUserId(e.target.value)}
                   placeholder="เช่น Ua1b2c3d4e5f67890..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-[#06C755]"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white font-mono focus:outline-none focus:border-[#06C755]"
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">
                   (ดูได้จากหน้า Your user ID ใน LINE Developers Console)
@@ -371,7 +372,7 @@ export default function AuthScreen({ onLoginSuccess, isSupabase }: AuthScreenPro
                   value={lineRoom}
                   onChange={(e) => setLineRoom(e.target.value)}
                   placeholder="เช่น 101, 205"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
 

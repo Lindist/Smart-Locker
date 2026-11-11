@@ -126,40 +126,52 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans overflow-x-hidden">
       {/* Top Navbar */}
-      <header className="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-40 px-4 sm:px-8 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-teal-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
+      <header className="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-40 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-teal-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20 shrink-0 text-sm sm:text-base">
             📦
           </div>
-          <div>
-            <h1 className="font-extrabold text-sm sm:text-base tracking-tight text-white flex items-center gap-2">
-              Smart Parcel Locker
-              <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+          <div className="min-w-0">
+            <h1 className="font-extrabold text-sm sm:text-base tracking-tight text-white flex items-center gap-1.5 sm:gap-2 truncate">
+              <span className="truncate">Smart Locker</span>
+              <span className="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 shrink-0">
                 4 ตู้ล็อกเกอร์
               </span>
               {isSupabase ? (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Supabase Connected
+                <span
+                  className="text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1 shrink-0"
+                  title="Supabase Connected"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span className="hidden md:inline">Supabase Connected</span>
+                  <span className="md:hidden">DB</span>
                 </span>
               ) : (
-                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                <span
+                  className="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 shrink-0"
+                  title="Local DB Mode"
+                >
                   💾 Local DB
                 </span>
               )}
             </h1>
-            <p className="text-[11px] text-slate-400">ระบบตู้ไปรษณีย์อัจฉริยะแบบแบ่ง 3 สิทธิ์ใช้งาน</p>
+            <p className="hidden sm:block text-[11px] text-slate-400 truncate">
+              ระบบตู้ไปรษณีย์อัจฉริยะแบบแบ่ง 3 สิทธิ์ใช้งาน
+            </p>
           </div>
         </div>
 
         {/* User Badge & Logout */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* User Info Display */}
-          <div className="flex items-center gap-2 bg-slate-950 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs shadow-sm">
-            <span className="font-bold text-white">{currentUser.name}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-950 border border-slate-700 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs shadow-sm max-w-[160px] sm:max-w-none">
+            <span className="font-bold text-white truncate max-w-[75px] sm:max-w-[180px]">
+              {currentUser.name}
+            </span>
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              className={`text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${
                 currentUser.role === 'ADMIN'
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                   : currentUser.role === 'SENDER'
@@ -178,8 +190,9 @@ export default function HomePage() {
           {/* Refresh Button */}
           <button
             onClick={handleManualRefresh}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 transition shrink-0"
             title="รีเฟรชข้อมูล"
+            aria-label="รีเฟรชข้อมูล"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
@@ -187,8 +200,9 @@ export default function HomePage() {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 hover:text-white transition flex items-center gap-1.5 text-xs font-semibold"
+            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 active:scale-95 border border-rose-500/30 text-rose-300 hover:text-white transition flex items-center gap-1.5 text-xs font-semibold shrink-0"
             title="ออกจากระบบ"
+            aria-label="ออกจากระบบ"
           >
             <LogOut className="w-4 h-4 text-rose-400" />
             <span className="hidden sm:inline">ออกจากระบบ</span>
@@ -197,7 +211,7 @@ export default function HomePage() {
       </header>
 
       {/* Main Role Content View */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-6 lg:p-8">
         {currentUser.role === 'RECIPIENT' ? (
           /* 1. สิทธิ์: ผู้รับ (Recipient) */
           <RecipientView
