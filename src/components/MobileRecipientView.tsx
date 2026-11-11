@@ -29,10 +29,10 @@ export default function MobileRecipientView({
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await fetch('/api/locker/unlock', {
+      const res = await fetch('/api/lockers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: token }),
+        body: JSON.stringify({ action: 'recipient_unlock', code: token }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);

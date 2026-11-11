@@ -1,258 +1,336 @@
-import { LockerState, Parcel, ActivityLog, UserDirectoryItem, DoorStatus } from './types';
+import { User, Locker, Parcel, ActivityLog, UserRole, LockerStatus } from './types';
 
-// Pre-seeded residents for testing
-export const DEFAULT_USERS: UserDirectoryItem[] = [
-  { id: 'usr-1', name: 'สมชาย สายเปย์', phone: '0812345678', room: '101', lineId: 'U111111111' },
-  { id: 'usr-2', name: 'สมศรี มณีวรรณ', phone: '0898765432', room: '205', lineId: 'U222222222' },
-  { id: 'usr-3', name: 'ธนากร สุขสันต์', phone: '0865554321', room: '312', lineId: 'U333333333' },
-  { id: 'usr-4', name: 'กิตติพงษ์ รุ่งเรือง', phone: '0841239876', room: '404', lineId: 'U444444444' },
+export const INITIAL_USERS: User[] = [
+  { id: 'usr-admin', name: 'สมศักดิ์ ดูแลระบบ', username: 'admin', phone: '0890000000', room: 'Office', role: 'ADMIN' },
+  { id: 'usr-sender', name: 'วิชัย ขนส่งด่วน (Courier)', username: 'sender1', phone: '0819998888', room: 'Delivery', role: 'SENDER' },
+  { id: 'usr-rec1', name: 'สมชาย สายเปย์', username: 'somchai', phone: '0812345678', room: '101', role: 'RECIPIENT' },
+  { id: 'usr-rec2', name: 'สมศรี มณีวรรณ', username: 'somsri', phone: '0898765432', room: '205', role: 'RECIPIENT' },
+  { id: 'usr-rec3', name: 'ธนากร สุขสันต์', username: 'thanakorn', phone: '0865554321', room: '312', role: 'RECIPIENT' },
 ];
 
-export interface SentNotification {
-  id: string;
-  timestamp: string;
-  recipientName: string;
-  recipientPhone: string;
-  recipientRoom: string;
-  trackingCode: string;
-  pickupPin: string;
-  qrToken: string;
-  webUnlockUrl: string;
-  flexMessagePayload: Record<string, unknown>;
-  status: 'SENT' | 'SIMULATED';
-}
-
-// Global in-memory storage (singleton in Node.js process)
-class LockerStore {
-  private state: LockerState = {
-    id: 'LK-01',
-    name: 'Smart Locker 01 (ตู้หลัก)',
-    location: 'หอพักนักศึกษา / อาคาร A ชั้น 1',
+export const INITIAL_LOCKERS: Locker[] = [
+  {
+    id: 'LK-1',
+    number: 1,
+    name: 'ตู้ที่ 1',
     status: 'AVAILABLE',
     doorState: 'CLOSED',
-    currentParcel: null,
+    currentParcelId: null,
     lastUpdated: new Date().toISOString(),
-    hardwareCommand: 'IDLE',
-  };
+  },
+  {
+    id: 'LK-2',
+    number: 2,
+    name: 'ตู้ที่ 2',
+    status: 'OCCUPIED',
+    doorState: 'CLOSED',
+    currentParcelId: 'pcl-sample-1',
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    id: 'LK-3',
+    number: 3,
+    name: 'ตู้ที่ 3',
+    status: 'AVAILABLE',
+    doorState: 'CLOSED',
+    currentParcelId: null,
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    id: 'LK-4',
+    number: 4,
+    name: 'ตู้ที่ 4',
+    status: 'AVAILABLE',
+    doorState: 'CLOSED',
+    currentParcelId: null,
+    lastUpdated: new Date().toISOString(),
+  },
+];
 
-  private history: Parcel[] = [];
+export const INITIAL_PARCELS: Parcel[] = [
+  {
+    id: 'pcl-sample-1',
+    trackingCode: 'TH-99482710',
+    lockerId: 'LK-2',
+    lockerNumber: 2,
+    recipientId: 'usr-rec1', // สมชาย ห้อง 101
+    recipientName: 'สมชาย สายเปย์',
+    recipientPhone: '0812345678',
+    recipientRoom: '101',
+    senderId: 'usr-sender',
+    senderName: 'วิชัย ขนส่งด่วน (Courier)',
+    pickupPin: '584912',
+    qrToken: 'qr_demo_token_somchai',
+    status: 'PENDING',
+    depositedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+  },
+];
+
+class SystemStore {
+  private users: User[] = [...INITIAL_USERS];
+  private lockers: Locker[] = [...INITIAL_LOCKERS];
+  private parcels: Parcel[] = [...INITIAL_PARCELS];
   private logs: ActivityLog[] = [
     {
-      id: 'log-0',
+      id: 'log-init',
       timestamp: new Date().toISOString(),
-      action: 'DOOR_CLOSED',
-      details: 'ระบบเริ่มต้นทำงาน ตู้พร้อมใช้งาน (AVAILABLE)',
+      action: 'DEPOSIT',
+      details: 'ระบบเริ่มต้น: ตู้ที่ 2 มีพัสดุรอรับ (TH-99482710)',
     },
   ];
-  private notifications: SentNotification[] = [];
+  private activeUserId: string = 'usr-rec1'; // default active user for UI preview
 
-  getState(): LockerState {
-    return { ...this.state };
+  getActiveUserId(): string {
+    return this.activeUserId;
+  }
+
+  setActiveUserId(id: string): User | undefined {
+    const user = this.users.find((u) => u.id === id);
+    if (user) {
+      this.activeUserId = id;
+    }
+    return user;
+  }
+
+  getUsers(): User[] {
+    return [...this.users];
+  }
+
+  getLockers(): Locker[] {
+    return [...this.lockers];
+  }
+
+  getParcels(): Parcel[] {
+    return [...this.parcels];
   }
 
   getLogs(): ActivityLog[] {
     return [...this.logs];
   }
 
-  getHistory(): Parcel[] {
-    return [...this.history];
-  }
-
-  getNotifications(): SentNotification[] {
-    return [...this.notifications];
-  }
-
-  addLog(action: ActivityLog['action'], details: string, parcelId?: string) {
-    const log: ActivityLog = {
-      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+  addLog(action: ActivityLog['action'], details: string, userId?: string) {
+    this.logs.unshift({
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       timestamp: new Date().toISOString(),
       action,
       details,
-      parcelId,
+      userId,
+    });
+    if (this.logs.length > 50) this.logs.pop();
+  }
+
+  // --- USER CRUD ---
+  createUser(data: Omit<User, 'id'>): User {
+    const newUser: User = {
+      id: 'usr-' + Date.now(),
+      ...data,
     };
-    this.logs.unshift(log); // latest first
-    if (this.logs.length > 100) this.logs.pop();
+    this.users.push(newUser);
+    this.addLog('USER_UPDATE', `สร้างผู้ใช้ใหม่: ${newUser.name} (${newUser.role})`);
+    return newUser;
   }
 
-  // Sender starts deposit process -> Unlock door to put parcel
-  startDeposit(): LockerState {
-    if (this.state.status === 'OCCUPIED') {
-      throw new Error('ไม่สามารถฝากได้เนื่องจากมีพัสดุอยู่ในตู้');
+  updateUser(id: string, data: Partial<User>): User | null {
+    const index = this.users.findIndex((u) => u.id === id);
+    if (index === -1) return null;
+
+    this.users[index] = { ...this.users[index], ...data };
+    this.addLog('USER_UPDATE', `แก้ไขข้อมูลผู้ใช้: ${this.users[index].name}`);
+    return this.users[index];
+  }
+
+  updateUserRole(id: string, newRole: UserRole): User | null {
+    const user = this.users.find((u) => u.id === id);
+    if (!user) return null;
+
+    const oldRole = user.role;
+    user.role = newRole;
+    this.addLog('ROLE_CHANGE', `เปลี่ยนสิทธิ์ผู้ใช้ ${user.name} จาก ${oldRole} เป็น ${newRole}`);
+    return user;
+  }
+
+  deleteUser(id: string): boolean {
+    const index = this.users.findIndex((u) => u.id === id);
+    if (index === -1) return false;
+
+    const removed = this.users.splice(index, 1)[0];
+    this.addLog('DELETE', `ลบผู้ใช้: ${removed.name} (${removed.username})`);
+    return true;
+  }
+
+  // --- PARCEL CRUD ---
+  updateParcel(id: string, data: Partial<Parcel>): Parcel | null {
+    const index = this.parcels.findIndex((p) => p.id === id);
+    if (index === -1) return null;
+
+    this.parcels[index] = { ...this.parcels[index], ...data };
+    this.addLog('PARCEL_UPDATE', `แก้ไขพัสดุ: ${this.parcels[index].trackingCode}`);
+    return this.parcels[index];
+  }
+
+  deleteParcel(id: string): boolean {
+    const index = this.parcels.findIndex((p) => p.id === id);
+    if (index === -1) return false;
+
+    const removed = this.parcels.splice(index, 1)[0];
+    // If this parcel was inside a locker, free the locker
+    const locker = this.lockers.find((l) => l.id === removed.lockerId);
+    if (locker && locker.currentParcelId === removed.id) {
+      locker.status = 'AVAILABLE';
+      locker.doorState = 'CLOSED';
+      locker.currentParcelId = null;
     }
-    this.state.doorState = 'OPEN';
-    this.state.hardwareCommand = 'UNLOCK';
-    this.state.lastUpdated = new Date().toISOString();
-    this.addLog('DOOR_OPENED', 'ผู้ส่งกดเปิดตู้เพื่อนำพัสดุเข้าช่อง');
-    return this.getState();
+
+    this.addLog('DELETE', `ลบพัสดุ: ${removed.trackingCode}`);
+    return true;
   }
 
-  // Sender confirms deposit after putting item & filling recipient info
-  confirmDeposit(params: {
+  // --- SENDER FLOW ---
+  // Step 1: Sender selects available locker -> Unlocks it
+  senderSelectAndUnlockLocker(lockerId: string): Locker {
+    const locker = this.lockers.find((l) => l.id === lockerId);
+    if (!locker) throw new Error('ไม่พบตู้ที่ระบุ');
+    if (locker.status === 'OCCUPIED') throw new Error(`${locker.name} มีพัสดุอยู่ ไม่สามารถเปิดได้`);
+
+    locker.doorState = 'OPEN';
+    locker.lastUpdated = new Date().toISOString();
+    this.addLog('UNLOCK', `ผู้ส่งสั่งเปิด ${locker.name} เพื่อเตรียมวางพัสดุ`);
+    return locker;
+  }
+
+  // Step 2: Sender places item, closes door, confirms recipient -> OCCUPIED
+  senderDepositParcel(params: {
+    lockerId: string;
+    senderId?: string;
+    senderName?: string;
+    recipientId: string;
     trackingCode: string;
-    recipientName: string;
-    recipientPhone: string;
-    recipientRoom: string;
-    recipientLineId?: string;
-  }): { locker: LockerState; parcel: Parcel; notification: SentNotification } {
-    if (this.state.status === 'OCCUPIED') {
-      throw new Error('ตู้มีพัสดุอยู่แล้ว');
-    }
+  }): { locker: Locker; parcel: Parcel } {
+    const locker = this.lockers.find((l) => l.id === params.lockerId);
+    if (!locker) throw new Error('ไม่พบตู้ที่ระบุ');
+    if (locker.status === 'OCCUPIED') throw new Error(`${locker.name} มีพัสดุอยู่แล้ว`);
 
-    // Generate random 6-digit PIN (e.g. "724915")
+    const recipient = this.users.find((u) => u.id === params.recipientId);
+    if (!recipient) throw new Error('ไม่พบข้อมูลผู้รับ');
+
+    // Generate 6-digit PIN and unique QR token
     const pickupPin = Math.floor(100000 + Math.random() * 900000).toString();
-    // Generate secure QR Token
-    const qrToken = 'pk_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    const qrToken = 'qr_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 
     const parcel: Parcel = {
       id: 'pcl-' + Date.now(),
       trackingCode: params.trackingCode || 'TH-' + Math.floor(10000000 + Math.random() * 90000000),
-      recipientName: params.recipientName,
-      recipientPhone: params.recipientPhone,
-      recipientRoom: params.recipientRoom,
-      recipientLineId: params.recipientLineId,
+      lockerId: locker.id,
+      lockerNumber: locker.number,
+      recipientId: recipient.id,
+      recipientName: recipient.name,
+      recipientPhone: recipient.phone,
+      recipientRoom: recipient.room,
+      senderId: params.senderId,
+      senderName: params.senderName,
       pickupPin,
       qrToken,
+      status: 'PENDING',
       depositedAt: new Date().toISOString(),
-      status: 'DEPOSITED',
     };
 
-    this.state.status = 'OCCUPIED';
-    this.state.doorState = 'CLOSED';
-    this.state.hardwareCommand = 'IDLE';
-    this.state.currentParcel = parcel;
-    this.state.lastUpdated = new Date().toISOString();
+    // Update locker
+    locker.status = 'OCCUPIED';
+    locker.doorState = 'CLOSED';
+    locker.currentParcelId = parcel.id;
+    locker.lastUpdated = new Date().toISOString();
 
-    this.addLog('PARCEL_DEPOSITED', `ฝากพัสดุ ${parcel.trackingCode} สำหรับ ${parcel.recipientName} (ห้อง ${parcel.recipientRoom}) สำเร็จ`, parcel.id);
+    this.parcels.unshift(parcel);
+    this.addLog(
+      'DEPOSIT',
+      `ผู้ส่ง ${params.senderName || ''} ฝากพัสดุ ${parcel.trackingCode} ใน ${locker.name} ให้ ${recipient.name} (ห้อง ${recipient.room}) สำเร็จ`
+    );
 
-    // Create Notification Payload for LINE
-    const webUnlockUrl = `/pickup/${qrToken}`;
-    const notification: SentNotification = {
-      id: 'notif-' + Date.now(),
-      timestamp: new Date().toISOString(),
-      recipientName: parcel.recipientName,
-      recipientPhone: parcel.recipientPhone,
-      recipientRoom: parcel.recipientRoom,
-      trackingCode: parcel.trackingCode,
-      pickupPin,
-      qrToken,
-      webUnlockUrl,
-      status: 'SENT',
-      flexMessagePayload: {
-        type: 'flex',
-        altText: `📦 มีพัสดุมาส่งถึงคุณ! (รหัสรับของ: ${pickupPin})`,
-        contents: {
-          type: 'bubble',
-          header: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              { type: 'text', text: '📦 พัสดุมาถึงแล้ว!', weight: 'bold', size: 'lg', color: '#1DB446' },
-              { type: 'text', text: `ตู้ล็อกเกอร์: ${this.state.name}`, size: 'xs', color: '#888888' },
-            ],
-          },
-          body: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              { type: 'text', text: `ผู้รับ: คุณ${parcel.recipientName} (ห้อง ${parcel.recipientRoom})`, weight: 'bold', size: 'md' },
-              { type: 'text', text: `เลขพัสดุ: ${parcel.trackingCode}`, size: 'sm', color: '#555555' },
-              { type: 'separator', margin: 'md' },
-              { type: 'text', text: '🔑 รหัสเปิดตู้ (PIN Code):', size: 'sm', color: '#888888', margin: 'md' },
-              { type: 'text', text: pickupPin, size: 'xxl', weight: 'bold', color: '#0284c7', align: 'center' },
-              { type: 'text', text: 'หรือสแกน QR Code ที่หน้าตู้เพื่อเปิดผ่านมือถือ', size: 'xs', color: '#999999', align: 'center' },
-            ],
-          },
-        },
-      },
-    };
-
-    this.notifications.unshift(notification);
-
-    return { locker: this.getState(), parcel, notification };
+    return { locker, parcel };
   }
 
-  // Recipient unlocks via PIN (at Kiosk) or QR Token (from Mobile Web)
-  unlock(codeOrToken: string): { success: boolean; message: string; parcel?: Parcel } {
-    if (this.state.status !== 'OCCUPIED' || !this.state.currentParcel) {
-      return { success: false, message: 'ขณะนี้ไม่มีพัสดุในตู้' };
+  // --- RECIPIENT FLOW ---
+  // Unlock locker using 6-digit PIN code or QR Token
+  recipientUnlock(codeOrToken: string, recipientId?: string): { success: boolean; message: string; locker?: Locker; parcel?: Parcel } {
+    const trimmed = codeOrToken.trim();
+    if (!trimmed) return { success: false, message: 'กรุณากรอกรหัส PIN หรือ Token' };
+
+    // Find matching pending parcel
+    const parcel = this.parcels.find(
+      (p) => p.status === 'PENDING' && (p.pickupPin === trimmed || p.qrToken === trimmed)
+    );
+
+    if (!parcel) {
+      return { success: false, message: 'รหัสเปิดตู้ไม่ถูกต้อง หรือไม่มีพัสดุที่รอรับด้วยรหัสนี้' };
     }
 
-    const parcel = this.state.currentParcel;
-    const isValid = parcel.pickupPin === codeOrToken.trim() || parcel.qrToken === codeOrToken.trim();
-
-    if (!isValid) {
-      this.addLog('UNLOCK_ATTEMPT', `พยายามปลดล็อกไม่สำเร็จ (รหัสไม่ถูกต้อง: ${codeOrToken})`, parcel.id);
-      return { success: false, message: 'รหัสเปิดตู้ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง' };
+    const locker = this.lockers.find((l) => l.id === parcel.lockerId);
+    if (!locker) {
+      return { success: false, message: 'ไม่พบตู้ที่เก็บพัสดุนี้' };
     }
 
-    // Success: Unlock door
-    this.state.doorState = 'OPEN';
-    this.state.hardwareCommand = 'UNLOCK';
-    this.state.lastUpdated = new Date().toISOString();
+    // Unlock door
+    locker.doorState = 'OPEN';
+    locker.status = 'AVAILABLE';
+    locker.currentParcelId = null;
+    locker.lastUpdated = new Date().toISOString();
 
-    // Mark parcel as picked up
-    parcel.pickedUpAt = new Date().toISOString();
+    // Mark parcel picked up
     parcel.status = 'PICKED_UP';
-    this.history.unshift({ ...parcel });
+    parcel.pickedUpAt = new Date().toISOString();
 
-    this.addLog('UNLOCK_SUCCESS', `ปลดล็อกตู้สำเร็จ! นำพัสดุ ${parcel.trackingCode} ออกเรียบร้อย`, parcel.id);
+    this.addLog(
+      'UNLOCK',
+      `ผู้รับ ${parcel.recipientName} ปลดล็อก ${locker.name} นำพัสดุ ${parcel.trackingCode} ออกเรียบร้อย`,
+      recipientId
+    );
 
-    return { success: true, message: 'ปลดล็อกตู้สำเร็จ! กรุณาเปิดประตูและหยิบพัสดุ', parcel };
-  }
-
-  // Door is closed after parcel retrieval -> Reset to AVAILABLE
-  completePickup(): LockerState {
-    this.state.status = 'AVAILABLE';
-    this.state.doorState = 'CLOSED';
-    this.state.currentParcel = null;
-    this.state.hardwareCommand = 'IDLE';
-    this.state.lastUpdated = new Date().toISOString();
-    this.addLog('DOOR_CLOSED', 'ประตูปิดเรียบร้อย ตู้พร้อมใช้งานสำหรับผู้ส่งรายถัดไป');
-    return this.getState();
-  }
-
-  // Admin emergency unlock
-  forceUnlock(reason: string = 'แอดมินสั่งปลดล็อกฉุกเฉิน'): LockerState {
-    this.state.doorState = 'OPEN';
-    this.state.hardwareCommand = 'UNLOCK';
-    this.state.lastUpdated = new Date().toISOString();
-    this.addLog('FORCE_UNLOCK', reason, this.state.currentParcel?.id);
-    return this.getState();
-  }
-
-  // Hardware updates door state (e.g. ESP32 Reed Switch sensor reports closed/open)
-  updateDoorState(doorState: DoorStatus): LockerState {
-    this.state.doorState = doorState;
-    if (doorState === 'CLOSED' && this.state.status === 'AVAILABLE' && this.state.hardwareCommand === 'UNLOCK') {
-      this.state.hardwareCommand = 'IDLE';
-    }
-    this.state.lastUpdated = new Date().toISOString();
-    return this.getState();
-  }
-
-  // Clear hardware command once ESP32 executes it
-  acknowledgeHardwareCommand(): void {
-    this.state.hardwareCommand = 'IDLE';
-  }
-
-  // Reset entire system for demo / testing
-  resetSystem(): LockerState {
-    this.state = {
-      id: 'LK-01',
-      name: 'Smart Locker 01 (ตู้หลัก)',
-      location: 'หอพักนักศึกษา / อาคาร A ชั้น 1',
-      status: 'AVAILABLE',
-      doorState: 'CLOSED',
-      currentParcel: null,
-      lastUpdated: new Date().toISOString(),
-      hardwareCommand: 'IDLE',
+    return {
+      success: true,
+      message: `ปลดล็อก ${locker.name} สำเร็จ! ประตูเปิดแล้ว กรุณาหยิบพัสดุและปิดตู้`,
+      locker,
+      parcel,
     };
-    this.addLog('DOOR_CLOSED', 'รีเซ็ตระบบกลับสู่ค่าเริ่มต้น พร้อมใช้งาน');
-    return this.getState();
+  }
+
+  // --- ADMIN MASTER FLOW ---
+  adminUnlockLocker(lockerId: string): Locker {
+    const locker = this.lockers.find((l) => l.id === lockerId);
+    if (!locker) throw new Error('ไม่พบตู้');
+
+    locker.doorState = 'OPEN';
+    locker.lastUpdated = new Date().toISOString();
+    this.addLog('ADMIN_UNLOCK', `Admin สั่งปลดล็อกฉุกเฉิน ${locker.name}`);
+    return locker;
+  }
+
+  adminCloseLocker(lockerId: string): Locker {
+    const locker = this.lockers.find((l) => l.id === lockerId);
+    if (!locker) throw new Error('ไม่พบตู้');
+
+    locker.doorState = 'CLOSED';
+    locker.lastUpdated = new Date().toISOString();
+    return locker;
+  }
+
+  adminResetLocker(lockerId: string): Locker {
+    const locker = this.lockers.find((l) => l.id === lockerId);
+    if (!locker) throw new Error('ไม่พบตู้');
+
+    if (locker.currentParcelId) {
+      const p = this.parcels.find((item) => item.id === locker.currentParcelId);
+      if (p) p.status = 'PICKED_UP';
+    }
+
+    locker.status = 'AVAILABLE';
+    locker.doorState = 'CLOSED';
+    locker.currentParcelId = null;
+    locker.lastUpdated = new Date().toISOString();
+    this.addLog('ADMIN_UNLOCK', `Admin รีเซ็ต ${locker.name} เป็นว่าง (AVAILABLE)`);
+    return locker;
   }
 }
 
-// Global singleton instance across Next.js API requests
-const globalForStore = globalThis as unknown as { lockerStore: LockerStore };
-export const lockerStore = globalForStore.lockerStore || new LockerStore();
-if (process.env.NODE_ENV !== 'production') globalForStore.lockerStore = lockerStore;
+const globalForStore = globalThis as unknown as { systemStore: SystemStore };
+export const systemStore = globalForStore.systemStore || new SystemStore();
+if (process.env.NODE_ENV !== 'production') globalForStore.systemStore = systemStore;

@@ -22,12 +22,12 @@ function PickupInner({ params }: PageProps) {
   } | undefined>(undefined);
 
   useEffect(() => {
-    fetch('/api/locker/status')
+    fetch('/api/lockers')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.data?.locker?.currentParcel) {
-          const parcel = data.data.locker.currentParcel;
-          if (parcel.qrToken === token) {
+        if (data.success && data.data?.parcels) {
+          const parcel = data.data.parcels.find((p: { qrToken: string }) => p.qrToken === token);
+          if (parcel) {
             setParcelInfo({
               recipientName: parcel.recipientName,
               recipientRoom: parcel.recipientRoom,
