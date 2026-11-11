@@ -21,6 +21,7 @@ export default function HomePage() {
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [isSupabase, setIsSupabase] = useState(false);
 
   // Fetch live state from backend
   const fetchAllData = useCallback(async () => {
@@ -31,6 +32,7 @@ export default function HomePage() {
       if (userData.success) {
         setCurrentUser(userData.data.currentUser);
         setAllUsers(userData.data.users);
+        setIsSupabase(Boolean(userData.data.isSupabase));
       }
 
       // 2. Fetch lockers and parcels
@@ -88,6 +90,15 @@ export default function HomePage() {
               <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                 4 ตู้ล็อกเกอร์
               </span>
+              {isSupabase ? (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Supabase Connected
+                </span>
+              ) : (
+                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                  💾 Local DB
+                </span>
+              )}
             </h1>
             <p className="text-[11px] text-slate-400">ระบบตู้ไปรษณีย์อัจฉริยะแบบแบ่ง 3 สิทธิ์ใช้งาน</p>
           </div>

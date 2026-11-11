@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { 
+  dbGetLockers, 
+  dbGetParcels, 
+  dbSenderSelectAndUnlock, 
+  dbSenderDeposit, 
+  dbRecipientUnlock,
+  dbAdminUnlockLocker,
+  dbAdminCloseLocker,
+  dbAdminResetLocker
+} from '@/lib/db';
 import { systemStore } from '@/lib/store';
 
 export async function GET() {
-  const lockers = systemStore.getLockers();
-  const parcels = systemStore.getParcels();
+  const lockers = await dbGetLockers();
+  const parcels = await dbGetParcels();
   const logs = systemStore.getLogs();
 
   return NextResponse.json({
@@ -24,7 +34,7 @@ export async function POST(req: NextRequest) {
     // Sender Action 1: Select available locker and unlock door
     if (action === 'sender_select_unlock') {
       const { lockerId } = body;
-      const locker = systemStore.senderSelectAndUnlockLocker(lockerId);
+      const locker = await dbSenderSelectAndUnlock(lockerId);
       return NextResponse.json({
         success: true,
         message: `ปลดล็อก ${locker.name} แล้ว กรุณานำพัสดุใส่ในตู้และปิดตู้`,
@@ -39,7 +49,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' }, { status: 400 });
       }
 
-      const result = systemStore.senderDepositParcel({
+      const result = await dbSenderDeposit({
         lockerId,
         senderId,
         senderName,
@@ -57,7 +67,7 @@ export async function POST(req: NextRequest) {
     // Recipient Action: Unlock by PIN code or QR Token
     if (action === 'recipient_unlock') {
       const { code, recipientId } = body;
-      const result = systemStore.recipientUnlock(code, recipientId);
+      const result = await dbRecipientUnlock(code, recipientId);
       if (!result.success) {
         return NextResponse.json({ success: false, message: result.message }, { status: 400 });
       }
@@ -67,7 +77,7 @@ export async function POST(req: NextRequest) {
     // Admin Action: Force Unlock any locker
     if (action === 'admin_unlock') {
       const { lockerId } = body;
-      const locker = systemStore.adminUnlockLocker(lockerId);
+      const locker = await dbAdminUnlockLocker(lockerId);
       return NextResponse.json({
         success: true,
         message: `Admin ปลดล็อก ${locker.name} สำเร็จ`,
@@ -78,7 +88,7 @@ export async function POST(req: NextRequest) {
     // Admin Action: Close door
     if (action === 'admin_close') {
       const { lockerId } = body;
-      const locker = systemStore.adminCloseLocker(lockerId);
+      const locker = await dbAdminCloseLocker(lockerId);
       return NextResponse.json({
         success: true,
         message: `ปิดประตู ${locker.name} เรียบร้อย`,
@@ -89,7 +99,7 @@ export async function POST(req: NextRequest) {
     // Admin Action: Reset locker to AVAILABLE
     if (action === 'admin_reset') {
       const { lockerId } = body;
-      const locker = systemStore.adminResetLocker(lockerId);
+      const locker = await dbAdminResetLocker(lockerId);
       return NextResponse.json({
         success: true,
         message: `รีเซ็ต ${locker.name} เป็นว่าง (AVAILABLE) เรียบร้อย`,

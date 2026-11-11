@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { systemStore } from '@/lib/store';
+import { dbGetUsers, dbCreateUser, dbUpdateUser, dbUpdateUserRole, dbDeleteUser } from '@/lib/db';
 import { UserRole } from '@/lib/types';
 
 export async function GET() {
-  const users = systemStore.getUsers();
+  const users = await dbGetUsers();
   return NextResponse.json({ success: true, data: users });
 }
 
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'กรุณากรอกชื่อและ Username' }, { status: 400 });
     }
 
-    const newUser = systemStore.createUser({
+    const newUser = await dbCreateUser({
       name,
       username,
       phone: phone || '',
@@ -39,18 +39,18 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Missing user ID' }, { status: 400 });
     }
 
-    // Role assignment specifically
+    // Role assignment
     if (role) {
-      const updated = systemStore.updateUserRole(id, role as UserRole);
+      const updated = await dbUpdateUserRole(id, role as UserRole);
       if (!updated) return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
     }
 
     // Update other fields
     if (Object.keys(rest).length > 0) {
-      systemStore.updateUser(id, rest);
+      await dbUpdateUser(id, rest);
     }
 
-    const users = systemStore.getUsers();
+    const users = await dbGetUsers();
     const user = users.find((u) => u.id === id);
 
     return NextResponse.json({ success: true, data: user, message: 'อัปเดตข้อมูลผู้ใช้สำเร็จ' });
@@ -69,7 +69,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Missing user ID' }, { status: 400 });
     }
 
-    const ok = systemStore.deleteUser(id);
+    const ok = await dbDeleteUser(id);
     if (!ok) {
       return NextResponse.json({ success: false, message: 'ไม่พบผู้ใช้' }, { status: 404 });
     }

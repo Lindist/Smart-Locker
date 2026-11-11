@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { systemStore } from '@/lib/store';
+import { dbGetParcels, dbUpdateParcel, dbDeleteParcel } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const recipientId = searchParams.get('recipientId');
+  const recipientId = searchParams.get('recipientId') || undefined;
 
-  let parcels = systemStore.getParcels();
-  if (recipientId) {
-    parcels = parcels.filter((p) => p.recipientId === recipientId);
-  }
-
+  const parcels = await dbGetParcels(recipientId);
   return NextResponse.json({ success: true, data: parcels });
 }
 
@@ -22,7 +18,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Missing parcel ID' }, { status: 400 });
     }
 
-    const updated = systemStore.updateParcel(id, data);
+    const updated = await dbUpdateParcel(id, data);
     if (!updated) {
       return NextResponse.json({ success: false, message: 'ไม่พบพัสดุ' }, { status: 404 });
     }
@@ -43,7 +39,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Missing parcel ID' }, { status: 400 });
     }
 
-    const ok = systemStore.deleteParcel(id);
+    const ok = await dbDeleteParcel(id);
     if (!ok) {
       return NextResponse.json({ success: false, message: 'ไม่พบพัสดุ' }, { status: 404 });
     }
