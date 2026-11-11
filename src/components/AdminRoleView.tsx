@@ -41,6 +41,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
     phone: '',
     room: '',
     role: 'RECIPIENT' as UserRole,
+    lineUserId: '',
   });
 
   // Parcel edit modal state
@@ -414,7 +415,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
             <button
               onClick={() => {
                 setEditingUser(null);
-                setUserForm({ name: '', username: '', password: '1234', phone: '', room: '', role: 'RECIPIENT' });
+                setUserForm({ name: '', username: '', password: '1234', phone: '', room: '', role: 'RECIPIENT', lineUserId: '' });
                 setUserModalOpen(true);
               }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow"
@@ -473,6 +474,7 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                               phone: u.phone,
                               room: u.room,
                               role: u.role,
+                              lineUserId: u.lineUserId || '',
                             });
                             setUserModalOpen(true);
                           }}
@@ -675,6 +677,19 @@ export default function AdminRoleView({ currentUser, lockers, users, parcels, on
                   <option value="SENDER">ผู้ส่ง (SENDER)</option>
                   <option value="ADMIN">Admin (ADMIN)</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  LINE User ID (ขึ้นต้นด้วย U สำหรับยิงแจ้งเตือนเข้าแชต)
+                </label>
+                <input
+                  type="text"
+                  value={userForm.lineUserId}
+                  onChange={(e) => setUserForm({ ...userForm, lineUserId: e.target.value })}
+                  placeholder="เช่น Ua1b2c3d4e5f6... (ดูได้จากหน้า Your user ID)"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-4">

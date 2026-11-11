@@ -8,6 +8,7 @@ export interface User {
   phone: string;
   room: string;
   role: UserRole;
+  lineUserId?: string;
 }
 
 export type LockerStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';

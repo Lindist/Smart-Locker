@@ -10,7 +10,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, username, phone, room, role, password } = body;
+    const { name, username, phone, room, role, password, lineUserId } = body;
     if (!name || !username) {
       return NextResponse.json({ success: false, message: 'กรุณากรอกชื่อและ Username' }, { status: 400 });
     }
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       phone: phone || '',
       room: room || '',
       role: (role as UserRole) || 'RECIPIENT',
+      lineUserId: lineUserId || '',
     });
 
     return NextResponse.json({ success: true, data: newUser, message: 'สร้างผู้ใช้สำเร็จ' });

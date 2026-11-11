@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { systemStore } from './store';
 import { User, Locker, Parcel, UserRole } from './types';
+import { sendLineFlexNotification } from './line';
 
 // Helper to convert snake_case from DB to camelCase for TypeScript
 function mapLockerFromDb(row: Record<string, unknown>): Locker {
@@ -200,13 +201,40 @@ export async function dbSenderDeposit(params: {
 
     if (lockerErr || !updatedLocker) throw new Error('อัปเดตตู้ไม่สำเร็จ');
 
+    // Trigger LINE notification
+    const recipientLineId = recipientData.line_user_id || recipientData.lineUserId;
+    if (recipientLineId) {
+      sendLineFlexNotification({
+        lineUserId: recipientLineId,
+        recipientName: recipientData.name,
+        recipientRoom: recipientData.room || '',
+        lockerNumber: lockerData.number,
+        trackingCode: newParcelRow.tracking_code,
+        pickupPin,
+        qrToken,
+      }).catch(console.error);
+    }
+
     return {
       locker: mapLockerFromDb(updatedLocker),
       parcel: mapParcelFromDb(insertedParcel),
     };
   }
 
-  return systemStore.senderDepositParcel(params);
+  const res = systemStore.senderDepositParcel(params);
+  const recipient = systemStore.getUsers().find((u) => u.id === params.recipientId);
+  if (recipient?.lineUserId) {
+    sendLineFlexNotification({
+      lineUserId: recipient.lineUserId,
+      recipientName: recipient.name,
+      recipientRoom: recipient.room,
+      lockerNumber: res.parcel.lockerNumber,
+      trackingCode: res.parcel.trackingCode,
+      pickupPin: res.parcel.pickupPin,
+      qrToken: res.parcel.qrToken,
+    }).catch(console.error);
+  }
+  return res;
 }
 
 // Recipient unlocks locker via PIN or QR Token
